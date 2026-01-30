@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=TRH Bot Agresivo
+Comment=Trading Bot (Background Launch)
+Exec=/bin/bash -c "cd /home/daniel/Bot_agresivo && /home/daniel/Bot_agresivo/venv/bin/python3 main.py > bot_startup.log 2>&1"
+Icon=utilities-terminal
+Path=/home/daniel/Bot_agresivo
+Terminal=false
+StartupNotify=true
+Categories=Finance;Utility;

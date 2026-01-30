@@ -1,0 +1,11 @@
+ccxt
+yfinance
+pandas
+requests
+websockets
+numpy
+ta
+fastapi
+uvicorn
+jinja2
+python-multipart

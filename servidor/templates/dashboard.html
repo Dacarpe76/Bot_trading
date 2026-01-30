@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEXC Bot Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen p-6">
+    <div class="container mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-500">RollingDCA Bot <span
+                    class="text-xs text-green-400 bg-green-900 px-2 py-1 rounded">ACTIVE</span></h1>
+            <div class="text-right">
+                <p class="text-gray-400">Balance: <span class="text-white font-mono text-xl">1,240.50 USDT</span></p>
+                <button class="text-sm text-red-400 hover:text-red-300">Logout</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Stats -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
+                <h3 class="text-gray-400 text-sm uppercase">Active Positions</h3>
+                <p class="text-3xl font-bold mt-2">10</p>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
+                <h3 class="text-gray-400 text-sm uppercase">Total PnL (24h)</h3>
+                <p class="text-3xl font-bold mt-2 text-green-500">+$45.20</p>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
+                <h3 class="text-gray-400 text-sm uppercase">Strategy</h3>
+                <p class="text-xl font-bold mt-2 text-blue-400">RollingDCA (5m)</p>
+            </div>
+        </div>
+
+        <section class="mt-8">
+            <h2 class="text-xl font-semibold mb-4">Active Positions</h2>
+            <div class="bg-gray-800 rounded-lg overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-700 text-gray-400 uppercase text-xs">
+                        <tr>
+                            <th class="px-6 py-3">Symbol</th>
+                            <th class="px-6 py-3">Entry Avg</th>
+                            <th class="px-6 py-3">Size</th>
+                            <th class="px-6 py-3">Step</th>
+                            <th class="px-6 py-3">PnL</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700">
+                        {% for sym, pos in positions.items() %}
+                        <tr class="hover:bg-gray-750">
+                            <td class="px-6 py-4 font-bold">{{ sym }}</td>
+                            <td class="px-6 py-4">{{ pos.avg_price }}</td>
+                            <td class="px-6 py-4">{{ pos.total_size }}</td>
+                            <td class="px-6 py-4"><span class="bg-blue-900 text-blue-200 py-1 px-2 rounded text-xs">{{
+                                    pos.dca_step }}</span></td>
+                            <td class="px-6 py-4 text-green-400">+0.00%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% if not positions %}
+                <div class="p-8 text-center text-gray-500">No active positions. Scanning...</div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="mt-8">
+            <h2 class="text-xl font-semibold mb-4">Live Logs</h2>
+            <div
+                class="bg-black p-4 rounded border border-gray-700 font-mono text-sm h-48 overflow-y-auto text-green-500">
+                <p>[INFO] Bot Engine Started.</p>
+                <p>[INFO] Connected to MEXC WebSocket.</p>
+                <p>[INFO] Scanning 10 Pairs...</p>
+            </div>
+        </section>
+    </div>
+</body>
+
+</html>

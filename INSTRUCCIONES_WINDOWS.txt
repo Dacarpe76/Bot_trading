@@ -1,0 +1,37 @@
+MIGRACIÓN DEL BOT A WINDOWS - PASO A PASO
+=========================================
+
+Para llevarte el bot a otro equipo con Windows, puedes copiar toda la carpeta "Bot_agresivo", PERO hay una cosa importante:
+
+NO copies la carpeta "venv" (el entorno virtual).
+Los entornos virtuales de Linux no funcionan en Windows. Debes crear uno nuevo allí.
+
+PASOS PARA LA INSTALACIÓN EN WINDOWS:
+-------------------------------------
+
+1. PREPARACIÓN
+   - Copia la carpeta del bot al nuevo equipo.
+   - Borra la carpeta "venv" si se ha copiado.
+   - Asegúrate de tener Python instalado (descárgalo de python.org).
+     * IMPORTANTE: Al instalar, marca la casilla "Add Python to PATH".
+
+2. INSTALACIÓN (Abrir CMD o PowerShell en la carpeta del bot)
+   
+   a) Crear el entorno virtual nuevo:
+      python -m venv venv
+
+   b) Activarlo:
+      venv\Scripts\activate
+      (Deberías ver un prefix "(venv)" en la línea de comandos)
+
+   c) Instalar las librerías necesarias:
+      pip install -r requirements.txt
+
+3. EJECUCIÓN
+   
+   - Con el entorno activado, simplemente corre:
+     python main.py
+
+NOTAS:
+- Los archivos de registro (.csv) y los estados (wallet_state_*.json) se pueden copiar sin problemas, así conservarás tu historial y balance.
+- Si usas Telegram, asegúrate de que el token sigue siendo válido.

@@ -1,0 +1,9 @@
+ccxt
+yfinance
+pandas
+requests
+PyQt6
+pyqtgraph
+websockets
+numpy
+ta

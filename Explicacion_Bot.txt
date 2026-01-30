@@ -1,0 +1,66 @@
+RESUMEN INTEGRAL DEL BOT DE TRADING (TRH / KRAKEN) - ESTUDIO ROBUSTEZ 2026
+==========================================================================
+
+1. VISIÓN GENERAL
+-----------------
+Este es un bot de trading algorítmico avanzado diseñado para operar en mercados de alta volatilidad y realizar estudios de robustez (hasta Feb 2026).
+El sistema gestiona simultáneamente **6 ESTRATEGIAS INDEPENDIENTES** en modo Paper Trading, cada una con su propio balance virtual de 500€, simulando costes reales y deslizamientos.
+
+2. ARQUITECTURA DEL SISTEMA (ACTUALIZADO 19 ENE)
+------------------------------------------------
+A. PROCESADOR DE ESTRATEGIAS (StrategyProcessor)
+   - Cerebro central que analiza el mercado en tiempo real (velas 1m y 5m).
+   - **Clasificador de Régimen de Mercado**: Etiqueta cada tick como Trending (Alcista/Bajista), Lateral o **Flash Crash** (Alta Volatilidad).
+   - Ejecuta las 6 estrategias en paralelo, permitiendo comparativas directas de rendimiento.
+
+B. PAPER WALLET MULTI-CUENTA
+   - Gestión segregada de carteras para cada estrategia (S1-S6).
+   - Control de márgenes, apalancamiento y comisiones simuladas (Taker/Maker).
+
+C. SISTEMA DE REGISTRO "CAJA NEGRA"
+   - `TRH_Opportunities_Log.csv`: Registra cada señal detectada, indicando por qué se tomó o se rechazó (Filtro RSI, Tendencia, Capital, etc.).
+   - `TRH_Research_YYYY_MM_DD.csv`: Registro tick-a-tick de todos los indicadores calculados (MFI, ADX, Bollinger, etc.) para análisis forense.
+
+3. ESTRATEGIAS DE TRADING (S1 - S6)
+-----------------------------------
+
+S1: SNIPER (DCA + Dynamic Trailing)
+   - **Perfil**: Reversión a la media clásica.
+   - **Logica**: Entra en soportes/resistencias con confirmación de vela.
+   - **Gestión**: Usa DCA (Promediado a la baja) si el trade va en contra (distancia mín 1.2%) y sale con Trailing Stop.
+
+S2: CENT SCALPER (DCA + Salida Céntimos)
+   - **Perfil**: Scalping de ultra-alta frecuencia.
+   - **Objetivo**: Capturar movimientos mínimos (ej. 0.04€ de beneficio) masivamente.
+   - **Gestión**: DCA activo y cierres rápidos para liberar capital. Regla de "Inactividad" cierra posiciones estancadas.
+
+S3: AGGRESSIVE (Momentum "Flash Crash") - **ACTUALIZADO**
+   - **Perfil**: Caza-movimientos rápidos y rupturas de volatilidad.
+   - **NUEVO: Momentum Short Entry**: 
+     * **Gatillo**: Precio rompe la Banda de Bollinger Inferior (`Price < BB_Lower`).
+     * **Validación**: Pánico Vendedor (`MFI < 15`) + Tendencia Fuerte (`ADX > 25`).
+     * **Salida**: Trailing Stop Dinámico y muy ajustado (0.8%) para asegurar ganancias inmediatas en caídas verticales.
+   - **Modo Clímax**: También opera contra-tendencia si detecta agotamiento extremo (RSI < 15 / > 85).
+   - **DCA**: APAGADO (Stop Loss estricto).
+
+S4: AGGR CENT (Momentum + Céntimos)
+   - **Perfil**: Híbrido entre S2 y S3.
+   - **Lógica**: Utiliza la entrada por Momentum de la S3 pero gestiona la salida buscando céntimos (Scalping).
+   - **DCA**: APAGADO.
+
+S5: PULLBACK (Trend Following)
+   - **Perfil**: Operador de Tendencia conservador.
+   - **Lógica**: Espera retrocesos a la EMA200 solo cuando la tendencia es fuerte (ADX > 25).
+   - **Filtro**: Solo opera a favor de la tendencia de 1h.
+
+S6: ERIT (PinBar Max Profit)
+   - **Perfil**: Anti-Institucional / Price Action.
+   - **Señal**: Velas PinBar (rechazo) con mecha larga (>60-75%).
+   - **Confluencia**: Requiere puntuación alta (4/5) en indicadores técnicos para confirmar la validez de la mecha.
+   - **Salida**: "Clímax Exit" si el oscilador se satura antes de tocar el TP.
+
+4. CONTROL Y VISUALIZACIÓN
+--------------------------
+- **GUI Configurable**: Los parámetros de sensibilidad (MFI Limit, ADX Min, Trailing Stop %) ahora son ajustables en caliente desde el botón "Config" de cada estrategia.
+- **Gráficos en Tiempo Real**: Botón "GRAPH" por operación para ver el precio vs el Trailing Stop visualmente.
+- **Botón Pánico**: Cierre de emergencia global.

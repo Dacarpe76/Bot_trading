@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Monitor</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #E0E0E0;
+            font-family: 'Consolas', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1,
+        h2 {
+            color: #FFFFFF;
+        }
+
+        .header-status {
+            background-color: #1E1E1E;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #333;
+        }
+
+        .status-val {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #00FF00;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 1000px) {
+            .grid-container {
+                grid-template-columns: 300px 1fr;
+            }
+        }
+
+        .card {
+            background-color: #1E1E1E;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+
+        th {
+            background-color: #2C2C2C;
+            text-align: left;
+            padding: 8px;
+            color: #AAA;
+        }
+
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #333;
+        }
+
+        tr:hover {
+            background-color: #252525;
+        }
+
+        .val-pos {
+            color: #00FF00;
+        }
+
+        .val-neg {
+            color: #FF0000;
+        }
+
+        .val-neutral {
+            color: #FFA500;
+        }
+
+        .monitor-price {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        /* Specific tweaks */
+        #market-table td {
+            padding: 4px 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header-status">
+        <div>
+            <div>System Status</div>
+            <div id="connection-status" style="color: red;">DISCONNECTED</div>
+        </div>
+        <div>
+            <div>Global Equity</div>
+            <div id="global-equity" class="status-val">--- €</div>
+        </div>
+        <div>
+            <div>Filtro Estrategia</div>
+            <select id="strat-filter" onchange="applyFilter()"
+                style="padding: 5px; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">
+                <option value="ALL">Todas</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Strategy Summary (Top Request) -->
+    <div class="card" style="margin-bottom: 20px;">
+        <h2>Resumen de Estrategias</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Inicio</th>
+                    <th>Activas</th>
+                    <th>Total</th>
+                    <th>W / L</th>
+                    <th>Win Rate</th>
+                    <th>ROI (Anual)</th>
+                    <th>PnL Total</th>
+                </tr>
+            </thead>
+            <tbody id="strategies-body">
+                <!-- Rows injected by JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="grid-container">
+        <!-- Market Monitor (Left) -->
+        <div class="card">
+            <h2>Mercado</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Simbolo</th>
+                        <th>Precio</th>
+                    </tr>
+                </thead>
+                <tbody id="market-body">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Active Operations (Right/Main) -->
+        <div class="card">
+            <h2>Operaciones Activas</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Strat</th>
+                        <th>Simbolo</th>
+                        <th>Tipo</th>
+                        <th>PnL</th>
+                        <th>Fees Paid</th>
+                        <th>Invertido</th>
+                    </tr>
+                </thead>
+                <tbody id="ops-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- History (Full Width Bottom) -->
+    <div class="card" style="margin-top: 20px;">
+        <h2>Histórico de Operaciones Cerradas</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Strat</th>
+                    <th>Simbolo</th>
+                    <th>Tipo</th>
+                    <th>Entrada</th>
+                    <th>Salida</th>
+                    <th>P. Entrada</th>
+                    <th>P. Salida</th>
+                    <th>Invertido</th>
+                    <th>PnL Neto</th>
+                    <th>Fees</th>
+                    <th>Resultado</th>
+                </tr>
+            </thead>
+            <tbody id="history-body">
+            </tbody>
+            <tfoot>
+                <tr style="background-color: #2C2C2C; font-weight: bold;">
+                    <td colspan="7" style="text-align: right;">Total Filtro:</td>
+                    <td id="total-invested">0.00 €</td>
+                    <td id="total-pnl">0.00 €</td>
+                    <td id="total-fees">0.00 €</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <script>
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+        let lastMsg = null;
+
+        function connect() {
+            socket = new WebSocket(wsUrl);
+            const statusEl = document.getElementById('connection-status');
+
+            socket.onopen = function () {
+                statusEl.textContent = 'ONLINE (Monitoring)';
+                statusEl.style.color = '#00FF00';
+                console.log("WS Connected");
+            };
+
+            socket.onclose = function () {
+                statusEl.textContent = 'DISCONNECTED (Reconnecting...)';
+                statusEl.style.color = 'red';
+                setTimeout(connect, 3000);
+            };
+
+            socket.onmessage = function (event) {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'market_update') {
+                    updateMarket(msg.data);
+                } else if (msg.type === 'dashboard_update') {
+                    lastMsg = msg;
+                    updateDashboard(msg);
+                }
+            };
+        }
+
+        function applyFilter() {
+            if (lastMsg) updateDashboard(lastMsg);
+        }
+
+        function updateMarket(data) {
+            const tbody = document.getElementById('market-body');
+            // Simple approach: clear and redraw or update in place. 
+            // For ~10 items redraw is fine.
+            let html = '';
+            data.forEach(item => {
+                const sym = item.symbol.split('/')[0];
+                html += `<tr>
+                    <td>${sym}</td>
+                    <td class="monitor-price">${parseFloat(item.price).toFixed(4)}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function updateDashboard(msg) {
+            // Update Filter Options
+            const filterSel = document.getElementById('strat-filter');
+            const currentFilter = filterSel.value;
+            const existingOpts = Array.from(filterSel.options).map(o => o.value);
+
+            msg.strategies.forEach(s => {
+                if (!existingOpts.includes(s.id)) {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.innerText = s.id;
+                    filterSel.appendChild(opt);
+                }
+            });
+
+            // 1. Global Equity
+            const eqEl = document.getElementById('global-equity');
+            eqEl.textContent = msg.global_equity.toFixed(2) + ' €';
+
+            // 2. Strategies
+            const stratBody = document.getElementById('strategies-body');
+            let stratHtml = '';
+            msg.strategies.forEach(s => {
+                const roiClass = s.roi >= 0 ? 'val-pos' : 'val-neg';
+                const pnlClass = s.pnl >= 0 ? 'val-pos' : 'val-neg';
+
+                stratHtml += `<tr>
+                    <td>${s.id}</td>
+                    <td>${s.start_date}</td>
+                    <td>${s.active_ops}</td>
+                    <td>${s.total_ops}</td>
+                    <td>${s.wins} - ${s.losses}</td>
+                    <td>${s.win_rate.toFixed(1)}%</td>
+                    <td class="${roiClass}">${s.roi.toFixed(1)}%</td>
+                    <td class="${pnlClass}">${s.pnl.toFixed(2)} €</td>
+                </tr>`;
+            });
+            stratBody.innerHTML = stratHtml;
+
+            // 3. Operations
+            const opsBody = document.getElementById('ops-body');
+            let opsHtml = '';
+            // Sort by PnL desc
+            msg.operations.sort((a, b) => (b.pnl_val || 0) - (a.pnl_val || 0));
+
+            msg.operations.forEach(op => {
+                if (currentFilter !== 'ALL' && op.strategy_id !== currentFilter) return;
+
+                const pnlVal = op.pnl_val || 0;
+                const pnlPct = op.pnl_pct || 0;
+                const pnlClass = pnlVal >= 0 ? 'val-pos' : 'val-neg';
+
+                opsHtml += `<tr>
+                    <td>${op.strategy_id}</td>
+                    <td>${op.symbol.split('/')[0]}</td>
+                    <td style="color: ${op.type === 'LONG' ? '#00FF00' : '#FF0000'}">${op.type}</td>
+                    <td class="${pnlClass}">
+                        ${pnlVal.toFixed(2)}€ (${pnlPct.toFixed(2)}%)
+                    </td>
+                    <td>${(op.fees_eur || 0).toFixed(2)}€</td>
+                    <td>${(op.margin || 0).toFixed(2)}€</td>
+                </tr>`;
+            });
+
+            if (msg.operations.length === 0) {
+                opsHtml = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No active operations</td></tr>';
+            }
+
+            opsBody.innerHTML = opsHtml;
+
+            // 4. History
+            const histBody = document.getElementById('history-body');
+            let histHtml = '';
+
+            // Limit to last 50
+            const history = msg.history || [];
+
+            // Calculate Totals first
+            const filteredHistory = [];
+            let totalInvested = 0;
+            let totalPnL = 0;
+            let totalFees = 0;
+
+            for (let i = 0; i < history.length; i++) {
+                const h = history[i];
+                if (currentFilter !== 'ALL' && h.strategy_id !== currentFilter) continue;
+
+                filteredHistory.push(h);
+                totalInvested += (h.margin || 0);
+                totalPnL += (h.final_pnl || 0);
+                totalFees += (h.final_fees || 0);
+            }
+
+            // Update Footer
+            const invEl = document.getElementById('total-invested');
+            if (invEl) invEl.innerText = totalInvested.toFixed(2) + ' €';
+
+            const totPnLEl = document.getElementById('total-pnl');
+            if (totPnLEl) {
+                totPnLEl.innerText = totalPnL.toFixed(2) + ' €';
+                totPnLEl.className = totalPnL >= 0 ? 'val-pos' : 'val-neg';
+            }
+
+            const feeEl = document.getElementById('total-fees');
+            if (feeEl) feeEl.innerText = totalFees.toFixed(2) + ' €';
+
+            // Render (Limit 50)
+            const displayLimit = 50;
+            for (let i = 0; i < filteredHistory.length; i++) {
+                if (i >= displayLimit) break;
+                const h = filteredHistory[i];
+
+                const pnlClass = h.final_pnl >= 0 ? 'val-pos' : 'val-neg';
+                const result = h.final_pnl >= 0 ? 'WIN' : 'LOSS';
+
+                // Format dates
+                const dateOpts = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
+                const entryStr = new Date(h.entry_time * 1000).toLocaleDateString('es-ES', dateOpts);
+                const exitStr = new Date(h.close_time * 1000).toLocaleDateString('es-ES', dateOpts);
+
+                histHtml += `<tr>
+                    <td>${h.strategy_id}</td>
+                    <td>${h.symbol.split('/')[0]}</td>
+                    <td style="color: ${h.type === 'LONG' ? '#00FF00' : '#FF0000'}">${h.type}</td>
+                    <td>${entryStr}</td>
+                    <td>${exitStr}</td>
+                    <td>${(h.avg_price || 0).toFixed(4)}</td>
+                    <td>${(h.close_price || 0).toFixed(4)}</td>
+                    <td>${(h.margin || 0).toFixed(2)} €</td>
+                    <td class="${pnlClass}">${(h.final_pnl || 0).toFixed(2)} €</td>
+                    <td>${(h.final_fees || 0).toFixed(2)} €</td>
+                    <td class="${pnlClass}">${result}</td>
+                </tr>`;
+            }
+
+            if (histHtml === '') {
+                histHtml = '<tr><td colspan="11" style="text-align:center; padding: 10px;">Sin historial reciente</td></tr>';
+            }
+            histBody.innerHTML = histHtml;
+        }
+
+        connect();
+    </script>
+</body>
+
+</html>

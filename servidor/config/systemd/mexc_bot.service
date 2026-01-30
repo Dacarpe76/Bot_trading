@@ -1,0 +1,15 @@
+[Unit]
+Description=MEXC Trading Bot (FastAPI)
+After=network.target
+
+[Service]
+User=daniel
+Group=daniel
+WorkingDirectory=/home/daniel/Bot_agresivo/servidor
+Environment="PATH=/home/daniel/Bot_agresivo/servidor/venv/bin"
+EnvironmentFile=/home/daniel/Bot_agresivo/servidor/.env
+ExecStart=/home/daniel/Bot_agresivo/servidor/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

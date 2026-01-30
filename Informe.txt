@@ -1,0 +1,360 @@
+Informe Integral de Ingeniería Algorítmica: Desarrollo de Bots de Day-Trading en Python con Análisis Volumétrico y Estructural de Mercado
+1. Introducción y Contextualización del Trading Algorítmico
+
+La evolución de los mercados financieros en la última década ha estado marcada por una transición innegable hacia la automatización y el análisis cuantitativo. Para el operador individual o "retail", el desarrollo de sistemas algorítmicos en Python ya no es un lujo, sino una necesidad operativa para competir en igualdad de condiciones con la ejecución institucional. El presente informe responde a la solicitud técnica de diseñar una arquitectura de bot de day-trading que integre indicadores avanzados, con un énfasis crítico en el volumen y la validación de la viabilidad del análisis de velas (candlestick analysis) dentro de un entorno automatizado.
+
+El trading intradía (day-trading) se caracteriza por la apertura y cierre de posiciones dentro de la misma sesión de mercado, buscando capitalizar movimientos de precios a corto plazo. En este contexto, la latencia, la precisión de los datos y la interpretación correcta de la microestructura del mercado son factores determinantes del éxito. A diferencia de las estrategias de inversión a largo plazo, que pueden depender de análisis fundamentales, el day-trading algorítmico se basa casi exclusivamente en el flujo de información técnica: precio, volumen y tiempo.
+
+El usuario ha planteado una interrogante fundamental: "¿Es el análisis de velas una opción viable?". La respuesta corta, respaldada por la literatura técnica y la práctica cuantitativa actual, es afirmativa, pero con matices críticos. El análisis de velas tradicional, basado en la inspección visual subjetiva, es insuficiente para un algoritmo. Sin embargo, la cuantificación de patrones de velas, contextualizada mediante el Análisis de Propagación del Volumen (VSA) y el Flujo de Órdenes (Order Flow), constituye uno de los enfoques más robustos disponibles en la actualidad.
+
+Este documento desglosa exhaustivamente la arquitectura necesaria para construir tal sistema. Se abordan desde los fundamentos de la programación asíncrona en Python (asyncio), necesaria para manejar flujos de datos en tiempo real, hasta la implementación matemática de indicadores de volumen institucional como el Delta de Volumen Acumulado (CVD) y el Desequilibrio del Libro de Órdenes (Order Book Imbalance). Asimismo, se examina la infraestructura de conectividad con exchanges como Kraken, utilizando bibliotecas estándar de la industria como CCXT, y se comparan marcos de validación histórica (backtesting) como VectorBT y Backtrader para asegurar la robustez estadística de las estrategias antes de arriesgar capital.
+2. Arquitectura de Software de Alto Rendimiento para Trading en Python
+
+El desarrollo de un bot de trading que opere en escalas de tiempo reducidas (desde segundos hasta minutos) impone requisitos estrictos sobre la arquitectura del software. Un script lineal que ejecuta tareas secuencialmente es inadecuado para el procesamiento de datos de mercado en tiempo real, donde la llegada de información es estocástica y de alta frecuencia.
+2.1 El Paradigma Asíncrono: asyncio y el Bucle de Eventos
+
+En el trading algorítmico, la capacidad de respuesta es crítica. Los sistemas tradicionales de ejecución síncrona bloquean el procesador cada vez que realizan una operación de entrada/salida (I/O), como enviar una solicitud a la API de un exchange y esperar la respuesta. Durante esa espera, que puede durar cientos de milisegundos, el bot es "ciego" a nuevos datos de mercado, lo que introduce un riesgo de latencia inaceptable.
+
+Para mitigar esto, la arquitectura moderna de bots en Python se basa en la biblioteca asyncio. Esta biblioteca permite la ejecución concurrente de código utilizando la sintaxis async/await, facilitando que un solo hilo de ejecución maneje miles de conexiones o tareas simultáneamente. El núcleo de este sistema es el Event Loop (Bucle de Eventos), que orquesta la ejecución de corutinas, pausando aquellas que esperan datos externos y cediendo el control a aquellas que están listas para procesar información.  
+
+2.1.1 Patrón Productor-Consumidor (Producer-Consumer)
+
+Para gestionar eficazmente el flujo de datos proveniente de los WebSockets del exchange (que pueden emitir cientos de mensajes por segundo durante picos de volatilidad), se recomienda implementar el patrón de diseño Productor-Consumidor utilizando colas asíncronas (asyncio.Queue).  
+
+    El Productor (Ingesta de Datos): Este componente es responsable de mantener la conexión WebSocket con el exchange (por ejemplo, Kraken). Su única función es recibir los mensajes crudos (JSON), realizar una validación mínima y depositarlos en una cola interna. Al desacoplar la recepción del procesamiento, se garantiza que el bot nunca pierda un paquete de datos debido a que la CPU esté ocupada calculando indicadores complejos.   
+
+La Cola (asyncio.Queue): Actúa como un búfer o amortiguador. En momentos de alta actividad de mercado ("bursts"), la cola absorbe el exceso de mensajes, permitiendo que el sistema los procese en orden secuencial sin colapsar. Las colas permiten pipelines de tareas no bloqueantes, esenciales para mantener la estabilidad del sistema.  
+
+El Consumidor (Motor de Estrategia): Este componente extrae los mensajes de la cola, actualiza el estado interno del mercado (por ejemplo, reconstruyendo el libro de órdenes o actualizando las velas OHLCV) y ejecuta la lógica de la estrategia de trading. Si se detecta una señal de entrada basada en el volumen o patrones de velas, el consumidor despacha una orden de ejecución.  
+
+Este diseño modular no solo mejora el rendimiento, sino que también facilita la depuración y el escalado. Por ejemplo, se pueden tener múltiples consumidores especializados: uno para calcular indicadores de volumen, otro para monitorear el riesgo de la cartera y otro para la gestión de la ejecución de órdenes.
+2.2 Protocolos de Conectividad: WebSockets vs. REST API
+
+La elección del protocolo de comunicación define la latencia y la capacidad del bot para reaccionar a los eventos del mercado.
+Característica	API REST	API WebSocket
+Modelo de Comunicación	Solicitud-Respuesta (Sincrónico/Polling)	Flujo Bidireccional Continuo (Asíncrono)
+Latencia	Alta (depende de la frecuencia de sondeo)	Baja (envío inmediato de eventos / Push)
+Uso de Datos	Instantánea (Snapshot) del estado actual	Actualizaciones incrementales (Deltas)
+Caso de Uso Ideal	Gestión de cuentas, ejecución de órdenes complejas, recuperación de datos históricos	Datos de mercado en tiempo real (Tickers, Trades, Order Book), HFT
+Complejidad	Baja (librerías estándar HTTP)	Alta (gestión de desconexiones, heartbeats)
+
+La investigación indica que para un bot de day-trading que utiliza indicadores de volumen y flujo de órdenes, el uso de WebSockets es obligatorio para la ingesta de datos de mercado. Depender de REST para obtener datos de precios implica realizar sondeos constantes (polling), lo cual es ineficiente y propenso a exceder los límites de tasa (rate limits) del exchange.  
+
+Sin embargo, la API REST sigue siendo crucial para operaciones críticas donde la confirmación explícita es necesaria, como la consulta inicial de saldos o la colocación de órdenes que no requieren velocidad de microsegundos. Una arquitectura híbrida, donde los datos de mercado fluyen por WebSockets y la gestión administrativa se realiza por REST, representa el estándar industrial.  
+
+2.3 Bibliotecas de Interfaz: CCXT y el Ecosistema "Pro"
+
+La biblioteca CCXT (CryptoCurrency eXchange Trading Library) se ha establecido como la herramienta estándar en el ecosistema Python para la interacción con exchanges, soportando más de 100 plataformas y normalizando las respuestas de las APIs para que el código sea portable entre diferentes mercados (por ejemplo, cambiar de Binance a Kraken con cambios mínimos en el código base).  
+
+2.3.1 CCXT Pro y Soporte WebSocket
+
+Mientras que la versión estándar de CCXT facilita el acceso a APIs REST, la variante CCXT Pro añade soporte nativo para WebSockets. Esto es de vital importancia para el proyecto, ya que abstrae la complejidad de mantener conexiones WebSocket estables, manejar "pings" y "pongs" (latidos de conexión), y suscribirse a canales de datos en tiempo real. CCXT Pro implementa bucles de eventos asíncronos compatibles con asyncio, integrándose perfectamente en la arquitectura Productor-Consumidor descrita anteriormente.  
+
+2.3.2 Consideraciones de Transparencia y Costos
+
+Es imperativo señalar un hallazgo relevante en la investigación de seguridad de bibliotecas open-source: algunas implementaciones de CCXT pueden incluir, por defecto, identificadores de bróker (broker IDs) en las solicitudes de órdenes. Esto significa que, si el desarrollador no configura explícitamente lo contrario, las comisiones generadas por el bot podrían atribuir rebates (reembolsos) a los desarrolladores de la librería en lugar de al usuario. Para un entorno profesional, se recomienda auditar la configuración de inicialización de la instancia del exchange en CCXT y sobrescribir cualquier referral_id o parámetro similar para asegurar la total propiedad de la operativa económica.  
+
+3. Estrategias Basadas en Volumen y Microestructura de Mercado
+
+El núcleo de la solicitud del usuario es operar basándose en el volumen. En el análisis técnico moderno, el volumen se considera el "combustible" que impulsa el "vehículo" del precio. Analizar el desplazamiento del precio sin verificar el consumo de combustible (volumen) conduce a señales falsas y trampas de mercado. A continuación, se detallan las metodologías avanzadas para integrar el volumen en algoritmos de Python.
+3.1 Análisis de Propagación del Volumen (VSA - Volume Spread Analysis)
+
+El VSA es una metodología que estudia la interrelación entre tres variables: el Volumen por barra, el Rango o Spread (Diferencia entre Máximo y Mínimo) de la vela, y el Precio de Cierre en relación con ese rango.  
+
+Aunque el usuario duda de la viabilidad de las velas, el VSA demuestra que las velas son esenciales no por su "dibujo", sino por los datos métricos que contienen. Una vela no es un dibujo; es un contenedor de datos de volatilidad (Rango) y direccionalidad (Cierre).
+3.1.1 Lógica Algorítmica de Señales VSA
+
+Para implementar VSA en Python, se deben traducir los conceptos visuales a lógica booleana y estadística:
+
+    No Demand (Sin Demanda - Señal Bajista):
+
+        Concepto: El precio sube, pero el volumen disminuye significativamente. Esto indica que los operadores institucionales ("Smart Money") no están participando en la subida, dejándola sin soporte.   
+
+    Implementación:
+
+        Condición 1: Tendencia alcista (Cierre actual > Cierre anterior).
+
+        Condición 2: Volumen actual < Promedio Móvil de Volumen (SMA 20).
+
+        Condición 3: Volumen actual < Volumen de las últimas n velas.
+
+        Interpretación: La falta de volumen en un movimiento alcista sugiere debilidad y una alta probabilidad de reversión.
+
+Stopping Volume (Volumen de Parada - Señal Alcista):
+
+    Concepto: Durante una tendencia bajista fuerte, aparece una vela con volumen "ultra alto", pero el precio no logra cerrar significativamente más bajo (o cierra lejos de sus mínimos, dejando una mecha inferior larga). Esto indica que las ventas masivas están siendo absorbidas pasivamente por compras institucionales.   
+
+Implementación:
+
+    Condición 1: Tendencia bajista.
+
+    Condición 2: Volumen > (Media de Volumen + 2 * Desviación Estándar de Volumen). El uso de desviaciones estándar (Z-Score) es crucial para definir objetivamente qué es "volumen ultra alto".   
+
+        Condición 3: El precio de cierre se encuentra en el 50% superior del rango de la vela (High - Low).
+
+Esfuerzo vs. Resultado (Effort vs Result):
+
+    Concepto: Una anomalía donde un gran volumen (gran esfuerzo) resulta en un cambio de precio pequeño (rango estrecho). Esto señala la presencia de una gran orden límite bloqueando el avance del precio (absorción).   
+
+3.2 Análisis de Flujo de Órdenes: Delta de Volumen Acumulado (CVD)
+
+Mientras que el VSA analiza el volumen agregado de una vela, el análisis de Flujo de Órdenes desglosa cada transacción individual para determinar quién inició la operación: el comprador o el vendedor.
+3.2.1 El Concepto de Agresión y Delta
+
+En cada operación ejecutada, hay un "Maker" (que provee liquidez con una orden límite) y un "Taker" (que consume liquidez con una orden de mercado).
+
+    Volumen de Compra: Operaciones donde el Taker compró al precio Ask (Agresión compradora).
+
+    Volumen de Venta: Operaciones donde el Taker vendió al precio Bid (Agresión vendedora).
+
+    Delta: Volumen de Compra - Volumen de Venta.   
+
+3.2.2 Cálculo en Python y Kraken
+
+Para calcular el CVD en tiempo real, el bot debe suscribirse al canal trade del WebSocket de Kraken. Cada mensaje de trade contiene el lado (side) de la operación.  
+
+    Algoritmo:
+
+        Recibir mensaje de trade: {'price': 50000, 'vol': 0.1, 'side': 'buy'}.
+
+        Si side == 'buy', sumar 0.1 al Delta acumulado.
+
+        Si side == 'sell', restar 0.1 al Delta acumulado.
+
+        Resetear el contador al inicio de cada nueva vela (para Delta por vela) o mantenerlo continuo (para CVD).
+
+3.2.3 Divergencias de Delta
+
+El CVD es una herramienta potente para detectar agotamiento.
+
+    Divergencia Bajista: El precio hace un nuevo máximo, pero el CVD hace un máximo más bajo. Esto indica que el precio subió por falta de liquidez en el lado de la venta, no por presión agresiva de compra. Es una señal de venta de alta probabilidad.   
+
+    Divergencia Alcista: El precio hace un nuevo mínimo, pero el CVD hace un mínimo más alto (los vendedores agresivos se están retirando).
+
+3.3 Desequilibrio del Libro de Órdenes (Order Book Imbalance - OBI)
+
+A diferencia del volumen (que es historia), el Libro de Órdenes representa la intención futura. El indicador de Desequilibrio del Libro de Órdenes mide la presión ejercida por las órdenes límite pasivas.  
+
+OBI=Vbid​+Vask​Vbid​−Vask​​
+
+Donde Vbid​ es el volumen total de órdenes de compra en los mejores n niveles, y Vask​ es el volumen de venta. Un valor cercano a +1 sugiere un fuerte soporte de compra, mientras que -1 sugiere una fuerte resistencia de venta. Para implementar esto en Python, es necesario mantener una copia local del libro de órdenes actualizada en tiempo real mediante el canal book de WebSockets, aplicando las actualizaciones incrementales (diffs) sobre una instantánea inicial.  
+
+4. Viabilidad y Cuantificación del Análisis de Velas
+
+La duda del usuario sobre la viabilidad del análisis de velas ("No sé si el análisis de velas es una opción viable") es central y merece un análisis detallado.
+
+Veredicto Técnico: El análisis de velas es altamente viable y recomendado, pero solo si se cuantifica. El análisis visual subjetivo ("me parece que es un martillo") no funciona en algoritmos. El análisis cuantitativo ("la mecha inferior es 2.5 veces el cuerpo real") es robusto.
+4.1 De Patrones Visuales a Datos Numéricos
+
+Para que un bot utilice velas, debe utilizar bibliotecas especializadas como TA-Lib (Technical Analysis Library). TA-Lib está escrita en C para máxima velocidad y cuenta con un "wrapper" o envoltorio en Python que permite detectar más de 60 patrones de velas automáticamente.  
+
+    Detección Automática: Funciones como TALIB.CDLHAMMER(open, high, low, close) devuelven valores enteros (por ejemplo, 100 para un patrón detectado, 0 para ausencia). Esto convierte una forma visual en una señal digital binaria procesable por la lógica del bot.   
+
+4.2 El Enfoque de "Filtros y Gatillos"
+
+La estrategia más efectiva no es operar el patrón de vela por sí solo (lo cual tiene una tasa de acierto cercana al 50%, es decir, aleatoria), sino usarlo en conjunción con el volumen.
+
+    Patrón de Vela = Gatillo (Trigger): Define el momento preciso de entrada. (Ej. Aparece un patrón envolvente alcista).
+
+    Volumen/VSA = Confirmación (Filter): Valida la calidad de la señal. (Ej. El patrón envolvente ocurrió con un volumen superior al promedio, validando la fuerza del movimiento).
+
+    Estructura = Contexto: El uso de indicadores como el VWAP Anclado (Anchored VWAP) proporciona un contexto institucional. Si un patrón de vela alcista ocurre justo cuando el precio toca el VWAP anclado desde el inicio de la sesión, la probabilidad de éxito aumenta exponencialmente debido a la defensa de precios promedio por parte de algoritmos institucionales.   
+
+Por lo tanto, el análisis de velas no solo es viable, sino que actúa como el mecanismo de sincronización (timing) esencial para las estrategias de volumen.
+5. Infraestructura de Datos y Especificidades de Kraken
+
+Para operar eficazmente en Kraken, el bot debe adherirse a las especificaciones técnicas de su API.
+5.1 Gestión de Límites de Tasa (Rate Limits)
+
+Kraken utiliza un sistema de "contador" para limitar las solicitudes a su API REST. Cada llamada incrementa el contador del usuario, y el paso del tiempo lo decrementa.
+
+    Niveles (Tiers): Los límites varían según el nivel de verificación del usuario (Starter, Intermediate, Pro). Por ejemplo, un usuario Pro tiene un límite de contador de 20 y una tasa de decaimiento de -1/segundo.   
+
+Optimización: El bot debe implementar una lógica interna para estimar el estado de este contador. Si se acerca al límite, debe pausar las solicitudes no críticas o cambiar a una operativa puramente WebSocket para la ejecución de órdenes si está disponible, evitando así bloqueos temporales (IP bans).  
+
+5.2 Datos Históricos para Validación
+
+Kraken ofrece archivos CSV descargables con datos OHLCVT (Open, High, Low, Close, Volume, Trades) históricos. Estos datos son fundamentales para realizar pruebas retrospectivas (backtesting) antes de lanzar el bot. Además, para la inicialización en vivo, se puede utilizar el endpoint fetch_ohlcv de CCXT para llenar los arrays de indicadores antes de comenzar a procesar los datos en tiempo real.  
+
+6. Validación Histórica: Backtesting Vectorizado vs. Orientado a Eventos
+
+Antes de arriesgar capital real, la lógica del bot debe ser verificada rigurosamente. Existen dos paradigmas principales en Python para esto.
+6.1 VectorBT: Investigación y Optimización de Parámetros
+
+VectorBT es una biblioteca de nueva generación diseñada para el análisis de grandes conjuntos de datos utilizando operaciones vectorizadas (sobre arrays completos de NumPy) en lugar de bucles iterativos. Esto la hace extremadamente rápida, permitiendo probar miles de combinaciones de estrategias en segundos.  
+
+    Uso Recomendado: Utilizar VectorBT en la fase de investigación para optimizar los parámetros de los indicadores de volumen. Por ejemplo, determinar si el umbral óptimo para considerar un volumen como "alto" es 2.0 desviaciones estándar o 2.5. VectorBT puede generar mapas de calor (heatmaps) que visualizan la rentabilidad en función de estos parámetros variables.   
+
+Análisis de Portafolio: Permite simular cómo se comportaría la estrategia operando en múltiples pares de criptomonedas simultáneamente (ej. BTC/USD, ETH/USD, SOL/USD).  
+
+6.2 Backtrader: Simulación de Ejecución Realista
+
+Backtrader opera bajo un paradigma orientado a eventos, iterando vela por vela tal como lo haría el bot en tiempo real. Aunque es más lento que VectorBT, ofrece una simulación mucho más detallada de la mecánica de ejecución.  
+
+    Uso Recomendado: Una vez seleccionados los parámetros con VectorBT, utilizar Backtrader para validar la estrategia considerando factores realistas como el deslizamiento (slippage), las comisiones de Kraken, y la latencia en la ejecución de órdenes. Backtrader permite codificar lógica compleja de gestión de posiciones (ej. mover el Stop Loss a Breakeven después de un movimiento favorable del 1%) que es difícil de modelar en sistemas vectorizados.
+
+Característica	VectorBT	Backtrader
+Paradigma	Vectorizado (NumPy/Pandas)	Orientado a Eventos (Bucles)
+Velocidad	Extremadamente Alta	Moderada
+Curva de Aprendizaje	Requiere conocimiento de Pandas/NumPy	Intuitivo para lógica secuencial
+Flexibilidad	Mejor para investigación estadística	Mejor para lógica de trading compleja
+Visualización	Integración con Plotly (Interactivo)	Matplotlib (Estático)
+7. Visualización Avanzada y Experiencia de Usuario
+
+Aunque el bot opera de forma autónoma, la visualización es clave para que el operador humano supervise y depure la estrategia.
+7.1 Gráficos de Velas con mplfinance
+
+Para generar gráficos estáticos o reportes al final del día, la biblioteca mplfinance es el estándar. Permite personalizar estilos visuales para resaltar velas específicas (por ejemplo, pintar de otro color las velas detectadas con "No Demand") y superponer indicadores de volumen y medias móviles de forma sencilla.  
+
+7.2 Mapas de Calor de Flujo de Órdenes con Plotly
+
+Para visualizar el Libro de Órdenes y su evolución histórica (Order Book History), se recomienda el uso de Plotly. Plotly permite crear gráficos interactivos y mapas de calor (heatmaps) donde el eje X es el tiempo, el eje Y es el precio, y el color (Z) representa la intensidad del volumen en el libro de órdenes.  
+
+Esta visualización es crítica para identificar "muros" de compra o venta (grandes concentraciones de órdenes límite) y ver cómo el precio reacciona al acercarse a ellos. Un mapa de calor puede revelar si un muro de órdenes es real o si desaparece cuando el precio se acerca (spoofing), una distinción visual que complementa la lógica algorítmica.  
+
+8. Conclusión y Hoja de Ruta
+
+La construcción de un bot de day-trading en Python basado en volumen es un desafío de ingeniería que requiere integrar múltiples disciplinas: programación asíncrona, análisis estadístico de datos y microestructura de mercado.
+
+La respuesta a la duda del usuario sobre el análisis de velas es clara: Es viable y necesario, siempre que se trate como un dato cuantitativo y se filtre mediante análisis de volumen. La combinación de la estructura de precios (velas/TA-Lib) con la verdad del flujo de órdenes (CVD/WebSockets de Kraken) crea una ventaja estadística robusta.
+Pasos Recomendados para la Implementación:
+
+    Fase 1 (Infraestructura): Establecer el bucle asyncio y la conexión WebSocket con ccxt.pro para recibir datos de Kraken. Implementar el sistema de colas.
+
+    Fase 2 (Investigación): Descargar datos históricos de Kraken y utilizar vectorbt para encontrar los parámetros óptimos de VSA (umbrales de volumen y periodos de medias móviles).
+
+    Fase 3 (Lógica): Implementar los cálculos de indicadores (CVD, OBI, Patrones de Velas) dentro del consumidor de datos.
+
+    Fase 4 (Simulación): Ejecutar la estrategia en modo "Paper Trading" (simulado) registrando todas las señales y operaciones virtuales para analizar el rendimiento en tiempo real sin riesgo financiero.
+
+    Fase 5 (Despliegue): Activar la ejecución de órdenes reales, comenzando con tamaños de posición mínimos y escalando progresivamente.
+
+Este enfoque sistemático, fundamentado en herramientas de código abierto probadas y principios sólidos de teoría de mercado, maximiza las probabilidades de éxito en el competitivo entorno del trading algorítmico.
+github.com
+ccxt.pro.manual - GitHub
+Se abre en una ventana nueva
+medium.com
+Mastering Asynchronous Queues in Python: Concurrency Made Easy with asyncio - Medium
+Se abre en una ventana nueva
+blog.hikmahtechnologies.com
+Producer-Consumer example comparing threading and asyncio | by Arshad Ansari
+Se abre en una ventana nueva
+gist.github.com
+Implement Producer/Consumer pattern with asyncio.Queue - GitHubのGist
+Se abre en una ventana nueva
+tokenmetrics.com
+REST vs WebSocket Crypto: API Comparison for Bots in 2025 - Token Metrics
+Se abre en una ventana nueva
+support.kraken.com
+Which API should I use? REST versus WebSocket - Kraken Support
+Se abre en una ventana nueva
+reddit.com
+Web socket VS REST API for 5 min Trading frequency : r/algotrading - Reddit
+Se abre en una ventana nueva
+binance.com
+Crypto quantitative artifact CCXT is caught in the scandal of "code commission", and there is a hidden commission business behind the free service | PANews on Binance Square
+Se abre en una ventana nueva
+docs.shakudo.io
+CCXT - Shakudo Docs
+Se abre en una ventana nueva
+github.com
+ccxt.pro.manual - GitHub
+Se abre en una ventana nueva
+github.com
+Azure-Python-Engineer/Volume-Spread-Analysis-VSA-indicator-for-Metatrader-5 - GitHub
+Se abre en una ventana nueva
+tradingview.com
+No Supply No Demand (NSND) – Volume Spread Analysis Tool — Indicator by MALIK897 - TradingView
+Se abre en una ventana nueva
+pyquantlab.com
+Volume Spread Analysis (VSA) Strategy Quantifying Market Action for Trading Signals with Rolling Backtesting - PyQuantLab
+Se abre en una ventana nueva
+youtube.com
+Volume Spread Analysis with Python | Algorithmic Trading Indicator - YouTube
+Se abre en una ventana nueva
+pyquantlab.com
+When Volume & Volatility Align Regression Channel Breakout with Python - PyQuantLab
+Se abre en una ventana nueva
+bookmap.com
+How Cumulative Volume Delta Can Transform Your Trading Strategy - Bookmap
+Se abre en una ventana nueva
+quantvps.com
+Cumulative Volume Delta - QuantVPS
+Se abre en una ventana nueva
+support.kraken.com
+WebSocket API v1/v2 - Recommended Python library and usage examples - Kraken Support
+Se abre en una ventana nueva
+docs.kraken.com
+Trades | Kraken API Center
+Se abre en una ventana nueva
+youtube.com
+Cumulative Volume Delta in Python - YouTube
+Se abre en una ventana nueva
+mql5.com
+Multi-module trading robot in Python and MQL5 (Part I): Creating basic architecture and first modules
+Se abre en una ventana nueva
+docs.coinapi.io
+Retrieve and analyze crypto order book data using a cryptocurrency API
+Se abre en una ventana nueva
+support.kraken.com
+WebSocket API v1 - How to maintain a valid order book - Kraken Support
+Se abre en una ventana nueva
+support.kraken.com
+Example code for interpreting the WebSocket API v1 order book feed (synchronous/single-threaded) - Kraken Support
+Se abre en una ventana nueva
+mql5.com
+Price Action Analysis Toolkit Development (Part 32): Python Candlestick Recognition Engine (II) — Detection Using Ta-Lib - MQL5 Articles
+Se abre en una ventana nueva
+ta-lib.org
+TA-Lib - Technical Analysis Library
+Se abre en una ventana nueva
+medium.com
+Using TA-Lib for detecting candle stick patterns in stock-prices | by Tobi Lux | Medium
+Se abre en una ventana nueva
+stackoverflow.com
+Calculate the VWAP indicator on a daily basis from a pandas df - Stack Overflow
+Se abre en una ventana nueva
+stackoverflow.com
+How to add avwap to pandas_ta? - Stack Overflow
+Se abre en una ventana nueva
+docs.kraken.com
+Spot REST Rate Limits | Kraken API Center
+Se abre en una ventana nueva
+support.kraken.com
+What are the API rate limits? - Kraken Support
+Se abre en una ventana nueva
+support.kraken.com
+Downloadable historical OHLCVT (Open, High, Low, Close, Volume, Trades) data | Kraken
+Se abre en una ventana nueva
+support.kraken.com
+Python code to retrieve historical time and sales (trading history). - Kraken Support
+Se abre en una ventana nueva
+github.com
+How to get ohlcv of a period? · Issue #215 · ccxt/ccxt - GitHub
+Se abre en una ventana nueva
+forextester.com
+Backtrader Alternatives for Trading & Backtesting - Forex Tester Online
+Se abre en una ventana nueva
+wire.insiderfinance.io
+5 Killer Use Cases of vectorBT with Real Market Data from EODHD - InsiderFinance Wire
+Se abre en una ventana nueva
+medium.com
+Battle-Tested Backtesters: Comparing VectorBT, Zipline, and Backtrader for Financial Strategy Development | by Trading Dude | Medium
+Se abre en una ventana nueva
+greyhoundanalytics.com
+Vectorbt vs Backtrader | Greyhound Analytics
+Se abre en una ventana nueva
+github.com
+mplfinance/examples/styles.ipynb at master - GitHub
+Se abre en una ventana nueva
+pythonfintech.com
+Plotting stock charts (OHLC) with matplotlib and mplfinance - PythonFinTech
+Se abre en una ventana nueva
+plotly.com
+Heatmaps in Python - Plotly
+Se abre en una ventana nueva
+github.com
+murtazayusuf/OrderflowChart: Plot orderflow footprint charts using plotly in python. - GitHub
+Se abre en una ventana nueva
+stackoverflow.com
+Plotly heatmap from order book (pandas dataframe) - Stack Overflow
