@@ -1433,6 +1433,93 @@ class StrategyTrendADX(BaseStrategy):
                  # Entry Short
                  self.execute_entry(symbol, 'SHORT', price, indicators)
 
+class StrategyFallingKnife(BaseStrategy):
+    """
+    Estrategia 'Cuchillo_caida' (Momentum Short).
+    Diseñada para entrar en SHORT durante desplomes fuertes (Crashes).
+    Ignora sobreventa (RSI bajo) y entra por rotura de volatilidad.
+    """
+    def __init__(self, wallet):
+        super().__init__("Cuchillo_caida", wallet)
+        self.params = {
+            'base_size_eur': 50.0,
+            'adx_min': 30.0,        # Requiere tendencia fuerte
+            'bb_breakout': True,    # Entrar si rompe BB Low
+            'sl_pct': 0.02,         # Stop Loss 2%
+            'tp_pct': 0.06,         # Take Profit 6% (Busca caídas grandes)
+            'trailing_start_pct': 0.02, # Activar Trailing tras 2% beneficio
+            'trailing_dist_pct': 0.01   # Seguir precio a 1% distancia
+        }
+
+    def check_entry_logic(self, symbol, price, indicators):
+        # 1. Filtro de Tendencia Bajista
+        decision = indicators.get('Decision_Log', 'Neutral')
+        if decision != 'Trend_Bearish': return # Solo operar si estamos bajo EMA50
+        
+        # 2. Fuerza de la Caída (ADX)
+        adx = float(indicators.get('ADX_14', 0))
+        if adx < self.params['adx_min']: return # Si ADX es bajo, no es un crash, es un rango
+        
+        # 3. Rotura de Soporte (Bollinger Low)
+        bb_low = float(indicators.get('Bollinger_Low', 0))
+        if bb_low == 0: return
+        
+        # Lógica: Si el precio ACTUAL está por debajo de la banda inferior (o muy cerca)
+        # Significa que está "empujando" la banda hacia abajo con fuerza.
+        dist_to_bb_low = (price - bb_low) / bb_low
+        
+        # Entramos si el precio Rompe (es menor) o está en el 0.1% del borde
+        is_breakout = price < bb_low * 1.001 
+        
+        if is_breakout:
+            # Check Active Positions
+            active_count = sum(1 for p in self.wallet.positions.values() if p['symbol'] == symbol)
+            if active_count > 0: return
+            
+            self.execute_entry(symbol, 'SHORT', price, indicators)
+
+    def execute_entry(self, symbol, type, price, indicators):
+        qty = self.params['base_size_eur'] / price
+        if self.wallet.open_position(symbol, type, price, quantity=qty):
+            if self.on_event: self.on_event("Open_Knife_Short", self.id, symbol, price, indicators)
+
+    def manage_position(self, pos, current_price, indicators):
+        # Gestión Tipo 'Runner': Busca Home Runs en caídas libres
+        entry_price = pos['entry_price']
+        
+        # SHORT PnL: (Entry - Current) / Entry
+        pnl_pct = (entry_price - current_price) / entry_price
+        
+        # 1. Hard Stop Loss
+        if pnl_pct < -self.params['sl_pct']:
+            self.wallet.close_position(pos['id'], current_price, "SL_Knife")
+            return
+
+        # 2. Hard Take Profit (Panic Exit if huge profit instant)
+        if pnl_pct > self.params['tp_pct']:
+            self.wallet.close_position(pos['id'], current_price, "TP_Knife_Crash")
+            return
+
+        # 3. Trailing Stop Logic (Simulada)
+        # Si ganamos > 2%, subimos el stop para asegurar 1%
+        # Usamos 'highest_pnl' (para shorts sería max drawdown del price, pero pnl calculation handles it)
+        # PnL positivo es bueno.
+        
+        # Guardar high water mark del PnL estria ideal, pero usamos precio.
+        # En Short: 'lowest_price' es el mejor precio visto.
+        lowest_seen = pos.get('lowest_price', entry_price)
+        
+        # Trailing Activation Price (Entry * (1 - Start)) -> Precio más bajo que entrada
+        activation_price = entry_price * (1 - self.params['trailing_start_pct'])
+        
+        if lowest_seen < activation_price:
+            # Trailing Activo
+            # Stop Price = Lowest_Seen * (1 + Dist) -> Si rebota un 1% desde el fondo
+            stop_price = lowest_seen * (1 + self.params['trailing_dist_pct'])
+            
+            if current_price > stop_price:
+                self.wallet.close_position(pos['id'], current_price, "Trailing_Knife")
+
     def execute_entry(self, symbol, side, price, indicators):
         # Max 1 Position per Symbol for this strat? Yes, assume so.
         for p in self.wallet.positions.values():

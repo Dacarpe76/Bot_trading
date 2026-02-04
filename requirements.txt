@@ -7,3 +7,4 @@ pyqtgraph
 websockets
 numpy
 ta
+python-dotenv

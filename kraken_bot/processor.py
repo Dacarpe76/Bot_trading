@@ -10,6 +10,7 @@ from kraken_bot import config
 
 from kraken_bot.paper_wallet import PaperWallet
 from kraken_bot import strategies
+from kraken_bot import scheduler_strategies
 
 class StrategyProcessor:
     def __init__(self):
@@ -17,6 +18,12 @@ class StrategyProcessor:
         # Initialize 4 Strategies with their own Wallets
         # Strategies Initialization (Descriptive Names)
         self.strategies = {}
+        
+        # --- Scheduled Strategies (Macro & Sim) ---
+        self.macro_strategy = scheduler_strategies.KrakenMacroStrategy()
+        self.five_cubes_sim = scheduler_strategies.FiveCubesSimStrategy()
+        self.last_scheduler_date = None # Track last run DATE
+
         
         # --- Aggressive Variants ---
         # 1. Aggressive (Mixed)
@@ -78,6 +85,11 @@ class StrategyProcessor:
         w16 = PaperWallet("TrendADX", initial_balance=500.0, capital_limit_pct=None)
         self.strategies['TrendADX'] = strategies.StrategyTrendADX(w16)
         self.strategies['TrendADX'].on_event = self.handle_strategy_event
+        
+        # 17. Cuchillo_caida (Momentum Short Crash) - 500 EUR
+        w17 = PaperWallet("Cuchillo_caida", initial_balance=500.0, capital_limit_pct=None)
+        self.strategies['Cuchillo_caida'] = strategies.StrategyFallingKnife(w17)
+        self.strategies['Cuchillo_caida'].on_event = self.handle_strategy_event
         
         # Multi-Coin State: { 'XBT/EUR': { 'candles': [], 'current_candle': None, 'cvd': 0.0, 'cols': ... } }
         self.market_state = {}
@@ -165,7 +177,19 @@ class StrategyProcessor:
     async def process_queue(self, input_queue):
         """Main loop consuming data from WebSocket."""
         logging.info("Strategy Processor Started (Multi-Coin).")
+        
+        # Initial Scheduler Check (Run on startup if needed, or wait for next 00:00)
+        # User said "evaluada cada 24 horas". Let's run checks in loop.
+        self.scheduler_interval = 60 # Check every minute
+        self.last_scheduler_check = 0
+        
         while True:
+            # --- Scheduler Check ---
+            now_ts = time.time()
+            if now_ts - self.last_scheduler_check > self.scheduler_interval:
+                self.check_scheduled_tasks()
+                self.last_scheduler_check = now_ts
+
             data = await input_queue.get()
             # Connector sends (symbol, trades_list)
             try:
@@ -1289,3 +1313,22 @@ class StrategyProcessor:
         except Exception as e:
             logging.error(f"Error saving extended market data for {symbol}: {e}")
             pass
+
+    def check_scheduled_tasks(self):
+        """Checks if scheduled strategies should run (Daily @ 00:00)."""
+        now = datetime.datetime.now()
+        today = now.date()
+        
+        # Check if we should run (At 00:xx) and haven't run today
+        if now.hour == 0:
+            if self.last_scheduler_date != today:
+                logging.info("Executing Daily Scheduled Tasks...")
+                
+                # 1. Kraken Macro (Real)
+                self.macro_strategy.run()
+                
+                # 2. Five Cubes (Sim)
+                self.five_cubes_sim.run()
+                
+                self.last_scheduler_date = today
+                logging.info("Daily Tasks Completed.")

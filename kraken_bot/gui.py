@@ -16,6 +16,19 @@ from kraken_bot.paper_wallet import PaperWallet
 from kraken_bot.processor import StrategyProcessor
 from kraken_bot.reporter import TelegramReporter
 
+STRATEGY_DISPLAY_NAMES = {
+    "Aggressive": "Agresivo (Scalping)",
+    "AggrCent": "Agresivo (Centrado)",
+    "NetScalp": "NetScalping (Red)",
+    "RollingDCA": "Rolling DCA (Largo)",
+    "Rol_dca_sh": "Rolling DCA (Corto)",
+    "Rol_dca_sh_v2": "Rolling DCA Short V2",
+    "Rol_dca_sh_v3": "Rolling DCA Short V3",
+    "HybridElite": "Híbrido Élite",
+    "TrendADX": "Tendencia ADX",
+    "Cuchillo_caida": "Cuchillo Caída (Crash)"
+}
+
 # --- LOGGING ---
 class QtLogHandler(logging.Handler):
     def __init__(self, signal):
@@ -33,6 +46,7 @@ class WorkerThread(QThread):
     operations_signal = pyqtSignal(list)
     history_signal = pyqtSignal(list)
     dashboard_signal = pyqtSignal(list) # New: [{id, balance, pnl, open_pos, win_rate}]
+    macro_signal = pyqtSignal(list) # New: [{name, active, equity, holdings, regime}]
     
     def __init__(self):
         super().__init__()
@@ -96,7 +110,25 @@ class WorkerThread(QThread):
                 except Exception as e:
                     self.log_signal.emit(f"Report Failed: {e}")
             
-            await asyncio.sleep(60)
+                except Exception as e:
+                    self.log_signal.emit(f"Report Failed: {e}")
+            
+            # --- Periodic Macro Status Update (e.g. every 10s) ---
+            if now.second % 10 == 0:
+                 try:
+                     macro_statuses = []
+                     if hasattr(self.strategy, 'macro_strategy'):
+                         macro_statuses.append(self.strategy.macro_strategy.get_status())
+                     if hasattr(self.strategy, 'five_cubes_sim'):
+                         macro_statuses.append(self.strategy.five_cubes_sim.get_status())
+                     
+                     if macro_statuses:
+                         self.macro_signal.emit(macro_statuses)
+                 except Exception as e:
+                     # self.log_signal.emit(f"Macro Status error: {e}")
+                     pass
+
+            await asyncio.sleep(1) # More granular for second check
 
     def handle_monitor_update(self, monitor_data):
         self.monitor_signal.emit(monitor_data)
@@ -156,9 +188,21 @@ class WorkerThread(QThread):
             
             # 2. Operations
             ops = w.get_positions_status(prices)
+            
+            # Active Stats
+            active_wins = 0
+            active_losses = 0
             for op in ops:
                 op['strategy_id'] = strat_id # Tag
                 all_ops.append(op)
+                if op.get('pnl_val', 0.0) >= 0:
+                    active_wins += 1
+                else:
+                    active_losses += 1
+            
+            # Update Dash Data with Active Split
+            dash_data[-1]['active_wins'] = active_wins
+            dash_data[-1]['active_losses'] = active_losses
                 
             # 3. History
             hist = w.get_history()
@@ -177,6 +221,22 @@ class WorkerThread(QThread):
     def stop(self):
         if self.loop: self.loop.stop()
         self.running = False
+
+
+# --- CUSTOM WIDGETS ---
+class SortableTableWidgetItem(QTableWidgetItem):
+    def __lt__(self, other):
+        # Use UserRole for sorting if available
+        v1 = self.data(Qt.ItemDataRole.UserRole)
+        v2 = other.data(Qt.ItemDataRole.UserRole)
+        
+        if v1 is not None and v2 is not None:
+             try:
+                 return float(v1) < float(v2)
+             except:
+                 pass
+        
+        return super().__lt__(other)
 
 
 # --- CHART AXIS UTILS ---
@@ -395,9 +455,10 @@ class MainWindow(QMainWindow):
         
         # Dashboard Table
         self.table_dashboard = QTableWidget()
-        self.table_dashboard.setColumnCount(11)
-        self.table_dashboard.setHorizontalHeaderLabels(["STRAT", "BALANCE", "EQUITY", "PNL", "ROI (Yr)", "OPS", "W-L", "WIN %", "ACTIVE", "STARTED", "CONTROL"])
-        self.table_dashboard.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table_dashboard.setColumnCount(12)
+        self.table_dashboard.setHorizontalHeaderLabels(["ESTRATEGIA", "BALANCE", "EQUIDAD", "PNL", "ROI (Anual)", "ROI (Diario)", "OPs", "G-P", "WIN %", "ACTIVAS", "INICIO", "CONTROL"])
+        self.table_dashboard.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.table_dashboard.setSortingEnabled(True)
         self.table_dashboard.verticalHeader().setVisible(False)
         self.table_dashboard.setStyleSheet("font-size: 11pt;")
         # self.table_dashboard.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -406,6 +467,21 @@ class MainWindow(QMainWindow):
         
         layout_strat.addWidget(self.header_frame)
         self.tabs_main.addTab(self.tab_strategies, "Estrategias")
+
+        # --- TAB 1b: MACRO / INVERSION ---
+        self.tab_macro = QWidget()
+        layout_macro = QVBoxLayout(self.tab_macro)
+        
+        self.table_macro = QTableWidget()
+        self.table_macro.setColumnCount(5)
+        self.table_macro.setHorizontalHeaderLabels(["Nombre", "Activo", "Equity/Balance", "Holdings", "Régimen/Modo"])
+        self.table_macro.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.table_macro.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch) # Holdings wider
+        self.table_macro.verticalHeader().setVisible(False)
+        self.table_macro.setStyleSheet("font-size: 11pt;")
+        layout_macro.addWidget(self.table_macro)
+        
+        self.tabs_main.addTab(self.tab_macro, "Inversión (Macro)")
         
         # --- TAB 2: MERCADO (Monitor Expanded) ---
         self.tab_market = QWidget()
@@ -450,8 +526,9 @@ class MainWindow(QMainWindow):
         
         self.table_ops = QTableWidget()
         self.table_ops.setColumnCount(12) 
-        self.table_ops.setHorizontalHeaderLabels(["Strat", "ID", "Symbol", "Type", "PnL", "Max PnL", "Fees", "Invested", "TS Stat", "TS Price", "Graph", "Close"])
+        self.table_ops.setHorizontalHeaderLabels(["Estrat", "ID", "Simbolo", "Tipo", "PnL", "Max PnL", "Fees", "Invertido", "Estado TS", "Precio TS", "Grafico", "Cerrar"])
         self.table_ops.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.table_ops.setSortingEnabled(True)
         self.table_ops.verticalHeader().setVisible(False)
         layout_ops.addWidget(self.table_ops)
         self.tabs_main.addTab(self.tab_ops, "Active Operations")
@@ -459,11 +536,21 @@ class MainWindow(QMainWindow):
         # --- TAB 4: TRADE HISTORY ---
         self.tab_history = QWidget()
         layout_hist = QVBoxLayout(self.tab_history)
+
+        hist_header = QHBoxLayout()
+        self.combo_hist_filter = QComboBox()
+        self.combo_hist_filter.addItem("Todas las Estrategias")
+        self.combo_hist_filter.currentTextChanged.connect(self.on_hist_filter_changed)
+        hist_header.addWidget(QLabel("Filtrar Estrategia: "))
+        hist_header.addWidget(self.combo_hist_filter)
+        hist_header.addStretch()
+        layout_hist.addLayout(hist_header)
         
         self.table_history = QTableWidget()
         self.table_history.setColumnCount(10) 
-        self.table_history.setHorizontalHeaderLabels(["Strat", "ID", "Symbol", "Type", "Open Time", "Close Time", "Fees", "PnL", "Max PnL", "Result"])
+        self.table_history.setHorizontalHeaderLabels(["Estrat", "ID", "Simbolo", "Tipo", "Apertura", "Cierre", "Fees", "PnL", "Max PnL", "Resultado"])
         self.table_history.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.table_history.setSortingEnabled(True)
         self.table_history.verticalHeader().setVisible(False)
         layout_hist.addWidget(self.table_history)
         self.tabs_main.addTab(self.tab_history, "Trade History")
@@ -488,6 +575,7 @@ class MainWindow(QMainWindow):
         self.worker.operations_signal.connect(self.update_operations)
         self.worker.history_signal.connect(self.update_history)
         self.worker.dashboard_signal.connect(self.update_dashboard)
+        self.worker.macro_signal.connect(self.update_macro)
         
         # Setup Logging
         log_handler = QtLogHandler(self.worker.log_signal)
@@ -509,20 +597,70 @@ class MainWindow(QMainWindow):
             self.lbl_status.setText("System: ONLINE (Kraken Multi-Strategy)")
             self.lbl_status.setStyleSheet("font-weight: bold; color: #00FF00;")
 
+    def update_macro(self, data):
+        self.table_macro.setRowCount(len(data))
+        for r, d in enumerate(data):
+            self.table_macro.setItem(r, 0, QTableWidgetItem(d.get('name', 'Unknown')))
+            
+            # Active Status
+            act = d.get('active', True) # Default true if not specified (Sim)
+            act_item = QTableWidgetItem("SÍ" if act else "NO")
+            if act: act_item.setForeground(QColor("#00FF00"))
+            else: act_item.setForeground(QColor("#FF0000"))
+            self.table_macro.setItem(r, 1, act_item)
+            
+            # Equity / Balance
+            # Unified key 'balance_usdt' or 'equity'
+            val = d.get('equity', d.get('balance_usdt', 0.0))
+            currency = "€" if "Kraken" in d['name'] else "$"
+            self.table_macro.setItem(r, 2, QTableWidgetItem(f"{val:.2f}{currency}"))
+            
+            # Holdings (Dict to String)
+            h = d.get('holdings', {})
+            h_str = ", ".join([f"{k}: {v:.4f}" for k,v in h.items() if v > 0.0001])
+            self.table_macro.setItem(r, 3, QTableWidgetItem(h_str))
+            
+            # Regime
+            reg = d.get('regime', d.get('mode', 'Unknown'))
+            self.table_macro.setItem(r, 4, QTableWidgetItem(str(reg)))
+
     def update_dashboard(self, data):
         # Dynamic Filter Population (One-time Init)
         if self.combo_filter.count() == 1 and len(data) > 0:
             strat_ids = sorted([d['id'] for d in data])
-            self.combo_filter.addItems(strat_ids)
+            display_names = [STRATEGY_DISPLAY_NAMES.get(sid, sid) for sid in strat_ids]
+            # Map back? Just add raw IDs to combo for filtering logic simplicity or handle mapping
+            # Actually dashboard combo filters Active Ops, keep IDs there or Names?
+            # Let's keep IDs in combo for now for simplicity of filtering, or use Names.
+            # User wants Names.
+            self.combo_filter.clear()
+            self.combo_filter.addItem("Todas las Estrategias")
+            self.combo_filter.addItems(strat_ids) # Logic uses ID
+
+            # History combo
+            self.combo_hist_filter.clear()
+            self.combo_hist_filter.addItem("Todas las Estrategias")
+            self.combo_hist_filter.addItems(strat_ids)
             
+        self.table_dashboard.setSortingEnabled(False) # Disable during update
         self.table_dashboard.setRowCount(len(data))
         
         total_global_equity = 0.0
         
         for r, d in enumerate(data):
-             self.table_dashboard.setItem(r, 0, QTableWidgetItem(d['id']))
-             self.table_dashboard.setItem(r, 1, QTableWidgetItem(f"{d['balance']:.2f}€"))
-             self.table_dashboard.setItem(r, 2, QTableWidgetItem(f"{d['equity']:.2f}€"))
+             # Spanish Name
+             strat_name = STRATEGY_DISPLAY_NAMES.get(d['id'], d['id'])
+             
+             # Sortable Items (Name)
+             self.table_dashboard.setItem(r, 0, QTableWidgetItem(strat_name))
+             
+             # Numeric Sorting Helper (Balance)
+             item_bal = QTableWidgetItem(f"{d['balance']:.2f}€")
+             item_bal.setData(Qt.ItemDataRole.UserRole, d['balance']) # Store value for sort if we used custom sorter
+             self.table_dashboard.setItem(r, 1, item_bal)
+             
+             item_eq = QTableWidgetItem(f"{d['equity']:.2f}€")
+             self.table_dashboard.setItem(r, 2, item_eq)
              
              total_global_equity += d['equity']
              
@@ -537,11 +675,39 @@ class MainWindow(QMainWindow):
              else: roi_item.setForeground(QColor("#FF0000"))
              self.table_dashboard.setItem(r, 4, roi_item)
 
-             self.table_dashboard.setItem(r, 5, QTableWidgetItem(str(d['total_ops'])))
-             self.table_dashboard.setItem(r, 6, QTableWidgetItem(f"{d['wins']}-{d['losses']}"))
+             # ROI Daily
+             start_t = d.get('start_time', 0)
+             if start_t > 0:
+                 days_active = (time.time() - start_t) / 86400.0
+                 if days_active < 1.0: days_active = 1.0 # Minimum 1 day to avoid infinity
+                 
+                 # Calculate Total ROI %
+                 # Assuming Initial Balance is constant defined in config, or we infer from balance - pnl?
+                 # Better to use: Total PnL / Initial * 100
+                 initial_bal = config.INITIAL_BALANCE
+                 total_roi_pct = (d['pnl_total'] / initial_bal) * 100
+                 daily_roi = total_roi_pct / days_active
+             else:
+                 daily_roi = 0.0
+                 
+             d_roi_item = QTableWidgetItem(f"{daily_roi:.2f}%")
+             if daily_roi >= 0: d_roi_item.setForeground(QColor("#00FF00"))
+             else: d_roi_item.setForeground(QColor("#FF0000"))
+             self.table_dashboard.setItem(r, 5, d_roi_item)
+
+             self.table_dashboard.setItem(r, 6, QTableWidgetItem(str(d['total_ops'])))
+             self.table_dashboard.setItem(r, 7, QTableWidgetItem(f"{d['wins']}-{d['losses']}"))
              
-             self.table_dashboard.setItem(r, 7, QTableWidgetItem(f"{d['win_rate']:.1f}%"))
-             self.table_dashboard.setItem(r, 8, QTableWidgetItem(str(d['open_pos'])))
+             self.table_dashboard.setItem(r, 7, QTableWidgetItem(f"{d['wins']}-{d['losses']}"))
+             
+             self.table_dashboard.setItem(r, 8, QTableWidgetItem(f"{d['win_rate']:.1f}%"))
+             
+             # Active: Total (W-L)
+             act_str = f"{d['open_pos']} ({d.get('active_wins',0)}-{d.get('active_losses',0)})"
+             act_item = QTableWidgetItem(act_str)
+             if d.get('active_wins',0) > d.get('active_losses',0): act_item.setForeground(QColor("#00FF00"))
+             elif d.get('active_losses',0) > d.get('active_wins',0): act_item.setForeground(QColor("#FF0000"))
+             self.table_dashboard.setItem(r, 9, act_item)
              
              # Actions (Double Button: Pause | Config)
              widget = QWidget()
@@ -564,7 +730,7 @@ class MainWindow(QMainWindow):
              
              widget.setLayout(layout)
              widget.setLayout(layout)
-             self.table_dashboard.setCellWidget(r, 10, widget)
+             self.table_dashboard.setCellWidget(r, 11, widget)
 
              # Started Time
              start_t = d.get('start_time', 0)
@@ -607,8 +773,10 @@ class MainWindow(QMainWindow):
                      time_str = " ".join(parts)
              else:
                  time_str = ""
-             self.table_dashboard.setItem(r, 9, QTableWidgetItem(time_str))
+             self.table_dashboard.setItem(r, 10, QTableWidgetItem(time_str))
              
+        self.table_dashboard.setSortingEnabled(True) # Re-enable
+        
         # Update Global Header Label
         self.lbl_status.setText(f"System: ONLINE | Global Eq: {total_global_equity:.2f} EUR")
         if len(data) > 0 and total_global_equity >= (len(data) * config.INITIAL_BALANCE):
@@ -692,8 +860,21 @@ class MainWindow(QMainWindow):
                 
                 item = QTableWidgetItem(text)
                 
+                item = QTableWidgetItem(text)
+                
                 # Coloring
-                if col_name == "RSI 14":
+                if col_name == "Price":
+                    try:
+                        p = float(text)
+                        # Check against Open (Candle Color)
+                        o_val = row.get("Open")
+                        if o_val:
+                            o = float(o_val)
+                            if p > o: item.setForeground(QColor("#00FF00"))
+                            elif p < o: item.setForeground(QColor("#FF0000"))
+                    except: pass
+
+                elif col_name == "RSI 14":
                      try:
                          v = float(text)
                          if v < config.RSI_OVERSOLD: item.setForeground(QColor("#00FF00"))
@@ -718,6 +899,10 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'last_ops_data'):
             self.update_operations(self.last_ops_data)
 
+    def on_hist_filter_changed(self, text):
+        if hasattr(self, 'last_hist_data'):
+            self.update_history(self.last_hist_data)
+
     def update_operations(self, data):
         self.last_ops_data = data 
         
@@ -727,19 +912,25 @@ class MainWindow(QMainWindow):
         
         for pos in data:
             strat_id = pos.get('strategy_id', '??')
-            if filter_strat == "All Strategies" or strat_id == filter_strat:
+            if filter_strat == "Todas las Estrategias" or filter_strat == "All Strategies" or strat_id == filter_strat:
                 filtered_data.append(pos)
         
         # Sort by PnL
-        filtered_data.sort(key=lambda x: x.get('pnl_val', 0.0), reverse=True)
-                
+        # filtered_data.sort(key=lambda x: x.get('pnl_val', 0.0), reverse=True) # Let user sort via table header now
+        
+        self.table_ops.setSortingEnabled(False) # Disable while populating
         self.table_ops.setRowCount(len(filtered_data))
         
         for r, pos in enumerate(filtered_data):
             strat_id = pos.get('strategy_id', '??')
-            self.table_ops.setItem(r, 0, QTableWidgetItem(strat_id))
+            # Use Spanish if available
+            strat_name = STRATEGY_DISPLAY_NAMES.get(strat_id, strat_id)
+            self.table_ops.setItem(r, 0, QTableWidgetItem(strat_name))
             
-            self.table_ops.setItem(r, 1, QTableWidgetItem(str(pos['id'])))
+            # ID
+            id_item = SortableTableWidgetItem(str(pos['id']))
+            id_item.setData(Qt.ItemDataRole.UserRole, pos['id']) # Numeric sort
+            self.table_ops.setItem(r, 1, id_item)
             
             sym = pos.get('symbol', '???') 
             self.table_ops.setItem(r, 2, QTableWidgetItem(sym))
@@ -752,7 +943,8 @@ class MainWindow(QMainWindow):
             pnl_val = pos.get('pnl_val', 0.0)
             pnl_pct = pos.get('pnl_pct', 0.0)
             pnl_str = f"{pnl_val:+.2f}€ ({pnl_pct:+.2f}%)"
-            pnl_item = QTableWidgetItem(pnl_str)
+            pnl_item = SortableTableWidgetItem(pnl_str)
+            pnl_item.setData(Qt.ItemDataRole.UserRole, pnl_val) # Numeric sort
             
             if pnl_val < 0:
                 pnl_item.setForeground(QColor("#FF0000")) 
@@ -764,18 +956,23 @@ class MainWindow(QMainWindow):
             self.table_ops.setItem(r, 4, pnl_item)
             
             # Max PnL
-            # Max PnL
             max_pnl = pos.get('max_pnl_pct', 0.0)
-            max_pnl_item = QTableWidgetItem(f"{max_pnl:+.2f}%")
+            max_pnl_item = SortableTableWidgetItem(f"{max_pnl:+.2f}%")
+            max_pnl_item.setData(Qt.ItemDataRole.UserRole, max_pnl)
+            
             if max_pnl >= 0: max_pnl_item.setForeground(QColor("#00FF00"))
             else: max_pnl_item.setForeground(QColor("#FF0000"))
             self.table_ops.setItem(r, 5, max_pnl_item)
 
             fees = pos.get('fees_eur', 0.0)
-            self.table_ops.setItem(r, 6, QTableWidgetItem(f"{fees:.2f}€"))
+            fees_item = SortableTableWidgetItem(f"{fees:.2f}€")
+            fees_item.setData(Qt.ItemDataRole.UserRole, fees)
+            self.table_ops.setItem(r, 6, fees_item)
             
             invested = pos.get('margin', 0.0)
-            self.table_ops.setItem(r, 7, QTableWidgetItem(f"{invested:.2f}€"))
+            inv_item = SortableTableWidgetItem(f"{invested:.2f}€")
+            inv_item.setData(Qt.ItemDataRole.UserRole, invested)
+            self.table_ops.setItem(r, 7, inv_item)
             
             ts_stat = pos.get('ts_status', 'WAIT')
             stat_item = QTableWidgetItem(ts_stat)
@@ -784,7 +981,9 @@ class MainWindow(QMainWindow):
             self.table_ops.setItem(r, 8, stat_item)
             
             ts_price = pos.get('ts_price', 0.0)
-            self.table_ops.setItem(r, 9, QTableWidgetItem(f"{ts_price:.4f}"))
+            ts_item = SortableTableWidgetItem(f"{ts_price:.4f}")
+            ts_item.setData(Qt.ItemDataRole.UserRole, ts_price)
+            self.table_ops.setItem(r, 9, ts_item)
             
             btn_graph = QPushButton("GRAPH")
             btn_graph.setStyleSheet("background-color: #007ACC; color: white; font-weight: bold;")
@@ -799,48 +998,64 @@ class MainWindow(QMainWindow):
             # Update Active Chart if Open
             if self.active_chart and self.active_chart.isVisible() and self.active_chart.trade_id == pos['id']:
                  pass
+                 
+        self.table_ops.setSortingEnabled(True)
 
-    def update_history(self, history):
-        self.table_history.setRowCount(len(history))
+    def update_history(self, data):
+        self.last_hist_data = data
+        
+        # Filter
+        filter_strat = self.combo_hist_filter.currentText()
+        filtered_data = []
+        for h in data:
+            strat_id = h.get('strategy_id', '??')
+            if filter_strat == "Todas las Estrategias" or filter_strat == "All Strategies" or strat_id == filter_strat:
+                filtered_data.append(h)
 
-        for r, trade in enumerate(history):
-             strat = trade.get('strategy_id', '?')
-             self.table_history.setItem(r, 0, QTableWidgetItem(strat))
-             
-             tid = str(trade.get('id', 'OLD')) 
-             self.table_history.setItem(r, 1, QTableWidgetItem(tid))
-             self.table_history.setItem(r, 2, QTableWidgetItem(trade['symbol']))
-             
-             type_item = QTableWidgetItem(trade['type'])
-             if trade['type'] == 'LONG': type_item.setForeground(QColor("#00FF00"))
-             else: type_item.setForeground(QColor("#FF0000"))
-             self.table_history.setItem(r, 3, type_item)
-             
-             open_t = datetime.datetime.fromtimestamp(trade['entry_time']).strftime('%d/%m %H:%M')
-             self.table_history.setItem(r, 4, QTableWidgetItem(open_t))
-             
-             close_t = datetime.datetime.fromtimestamp(trade.get('close_time',0)).strftime('%d/%m %H:%M')
-             self.table_history.setItem(r, 5, QTableWidgetItem(close_t))
-             
-             fees = trade.get('final_fees', 0.0)
-             self.table_history.setItem(r, 6, QTableWidgetItem(f"{fees:.2f}€"))
-             
-             pnl = trade.get('final_pnl', 0.0)
-             pnl_item = QTableWidgetItem(f"{pnl:+.2f} EUR")
-             if pnl >= 0: pnl_item.setForeground(QColor("#00FF00"))
-             else: pnl_item.setForeground(QColor("#FF0000"))
-             self.table_history.setItem(r, 7, pnl_item)
-             
-             # Max PnL
-             # Max PnL
-             max_pnl = trade.get('max_pnl_pct', 0.0)
-             max_pnl_item = QTableWidgetItem(f"{max_pnl:+.2f}%")
-             if max_pnl >= 0: max_pnl_item.setForeground(QColor("#00FF00"))
-             else: max_pnl_item.setForeground(QColor("#FF0000"))
-             self.table_history.setItem(r, 8, max_pnl_item)
-
-             res_str = "WIN" if pnl >= 0 else "LOSS"
-             self.table_history.setItem(r, 9, QTableWidgetItem(res_str))
+        self.table_history.setSortingEnabled(False)
+        self.table_history.setRowCount(len(filtered_data))
+        
+        for r, h in enumerate(filtered_data):
+            strat_id = h.get('strategy_id', '??')
+            strat_name = STRATEGY_DISPLAY_NAMES.get(strat_id, strat_id)
+            self.table_history.setItem(r, 0, QTableWidgetItem(strat_name))
+            
+            id_item = QTableWidgetItem(str(h['id']))
+            id_item.setData(Qt.ItemDataRole.UserRole, h['id'])
+            self.table_history.setItem(r, 1, id_item)
+            
+            self.table_history.setItem(r, 2, QTableWidgetItem(h['symbol']))
+            
+            type_item = QTableWidgetItem(h['type'])
+            if h['type'] == 'LONG': type_item.setForeground(QColor("#00FF00"))
+            else: type_item.setForeground(QColor("#FF0000"))
+            self.table_history.setItem(r, 3, type_item)
+            
+            # Times
+            ot = datetime.datetime.fromtimestamp(h['entry_time']).strftime("%d/%m %H:%M")
+            self.table_history.setItem(r, 4, QTableWidgetItem(ot))
+            
+            ct = datetime.datetime.fromtimestamp(h.get('close_time', 0)).strftime("%d/%m %H:%M")
+            self.table_history.setItem(r, 5, QTableWidgetItem(ct))
+            
+            fees = h.get('fees_eur', 0.0)
+            self.table_history.setItem(r, 6, QTableWidgetItem(f"{fees:.2f}€"))
+            
+            pnl = h.get('final_pnl', 0.0)
+            pnl_item = QTableWidgetItem(f"{pnl:.2f}€")
+            if pnl >= 0: pnl_item.setForeground(QColor("#00FF00"))
+            else: pnl_item.setForeground(QColor("#FF0000"))
+            self.table_history.setItem(r, 7, pnl_item)
+            
+            m_pnl = h.get('max_pnl_pct', 0.0)
+            m_item = QTableWidgetItem(f"{m_pnl:.2f}%")
+            if m_pnl >= 0: m_item.setForeground(QColor("#00FF00"))
+            else: m_item.setForeground(QColor("#FF0000"))
+            self.table_history.setItem(r, 8, m_item)
+            
+            self.table_history.setItem(r, 9, QTableWidgetItem(h.get('exit_reason', '')))
+            
+        self.table_history.setSortingEnabled(True)
 
     def manual_close(self, trade_id, strat_id, price):
         if price <= 0:

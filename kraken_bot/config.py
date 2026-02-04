@@ -50,6 +50,14 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN', '')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
 
+# --- API KEYS (KRAKEN / BINANCE) ---
+KRAKEN_API_KEY = os.getenv("KRAKEN_API_KEY")
+KRAKEN_PRIVATE_KEY = os.getenv("KRAKEN_PRIVATE_KEY")
+BINANCE_API_KEY = os.getenv("BINANCE_API_KEY")
+BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET") # Note: Bot_trading uses different names? checking later. Bot_trading/config didn't verify Binance.
+# five_cubes_bot.py uses config.API_KEY, config.SECRET_KEY. I should standardize or set them here.
+# Assuming I'll set standard names here.
+
 # --- METRICS ---
 # Official Project Start: 19/01/2026 10:04:10
 PROJECT_START_TIMESTAMP = 1768813450
