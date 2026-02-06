@@ -1,0 +1,56 @@
+Done! Congratulations on your new bot. You will find it at t.me/TraderDual2025_bot. You can now add a description, about section and profile picture for your bot, see /help for a list of commands. By the way, when you've finished creating your cool bot, ping our Bot Support if you want a better username for it. Just make sure the bot is fully operational before you do this.
+
+Use this token to access the HTTP API:
+8354477556:AAGvUdno_5vDE06Wt4ECXXz5i9SEd7JqlPk
+Keep your token secure and store it safely, it can be used by anyone to control your bot.
+
+For a description of the Bot API, see this page: https://core.telegram.org/bots/api
+
+1203738200
+📆 Регистрация: 28.12.2025
+🧮 Купленные запросы: 0
+
+🔑 Подписка: ❌
+
+💰 Твой баланс: 0.00 RUB
+
+
+kraken
+
+Spot trading API
+API keys used for spot & margin trading
+Review and manage API keys linked to your Kraken account.
+Bot_inversor
+12/28/25
+-
+-
+
+
+API key created
+ImportantSave your keys in a safe place. For security reasons, you won’t be able to view them again once you close this dialog.
+API key: 5eccdyetlR7qU09juXA489w9hNXWKVqfH9MAcZBY5IlGIjq35PO3Cred
+Private key: /xkyqdqyfHOUdAQbscXET6XRPN2GZDB9jdSYYtFgQANlRHsAX1ThQmL2OhipuTHEpBl+PcOLPr+B6ysmIxmaGA==
+
+
+
+Binance
+
+HMAC
+DanielBot
+Escanear para obtener dirección
+Clave API
+iAoPxtuPa4bSvcJBUutaCbJdQZ5BGCQX3hs94pIvHmbSyrTk47QmdoibqTb77POK
+Clave secreta
+aWmeCzhCOXyAHBm0wDhGpsRjhtxqIfCaBvQKMQ4BMz4FTvsoDSS4hUXZvCfIxacL
+Restricciones de API
+
+Habilitar lectura
+Habilitar trading de márgenes y spot
+Habilitar margen, préstamo, reembolso y transferencia
+Habilitar futuros
+Permite transferencias universales
+Habilitar Retiros
+Habilitar lista blanca de símbolos
+Restricciones de acceso por IP
+Sin restricciones (menos seguro)  Esta clave API permite acceder desde cualquier dirección IP. Esta acción no es recomendable.
+Restringir el acceso a direcciones IP fiables (recomendado)

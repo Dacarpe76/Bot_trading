@@ -22,6 +22,7 @@ class StrategyProcessor:
         # --- Scheduled Strategies (Macro & Sim) ---
         self.macro_strategy = scheduler_strategies.KrakenMacroStrategy()
         self.five_cubes_sim = scheduler_strategies.FiveCubesSimStrategy()
+        self.news_strategy = scheduler_strategies.KrakenNewsStrategy()
         self.last_scheduler_date = None # Track last run DATE
 
         
@@ -109,11 +110,11 @@ class StrategyProcessor:
         self.on_monitor_update = None # New: List of {sym, price, rsi}
 
         # Pre-load History
-        self.fetch_all_history()
+        # self.fetch_all_history() # Moved to explicit call in WorkerThread to avoid blocking init
         
         self.last_monitor_update = 0 # Throttle Control
         self.global_trend = "NEUTRAL"
-        logging.info("StrategyProcessor: Initialization Complete.")
+        logging.info("StrategyProcessor: Initialization Complete (History fetch pending).")
 
     def fetch_all_history(self):
         """Fetches history for all configured symbols."""
@@ -192,12 +193,15 @@ class StrategyProcessor:
 
             data = await input_queue.get()
             # Connector sends (symbol, trades_list)
+            # logging.info(f"DEBUG: Msg received: {data}") # Too verbose?
             try:
                 if isinstance(data, tuple) and len(data) == 2:
                     symbol, trades_list = data
                     
                     if symbol in self.market_state:
+                         # logging.info(f"DEBUG: Processing {len(trades_list)} trades for {symbol}")
                          for trade in trades_list:
+                             # ... process trade ...
                              self.process_trade(symbol, trade)
                 
                 # Legacy support or error handling
@@ -1319,9 +1323,10 @@ class StrategyProcessor:
         now = datetime.datetime.now()
         today = now.date()
         
-        # Check if we should run (At 00:xx) and haven't run today
-        if now.hour == 0:
-            if self.last_scheduler_date != today:
+        # Check if we should run (At 00:xx OR First Run of the session if not run today?)
+        # Logic: If never run (None) -> Run Now? Or User wants strictly 00:00?
+        # User complained "it's not operating". Usually implies they want immediate action on start.
+        if self.last_scheduler_date is None or (now.hour == 0 and self.last_scheduler_date != today):
                 logging.info("Executing Daily Scheduled Tasks...")
                 
                 # 1. Kraken Macro (Real)
@@ -1330,5 +1335,18 @@ class StrategyProcessor:
                 # 2. Five Cubes (Sim)
                 self.five_cubes_sim.run()
                 
+                # 3. News Strategy (Sim)
+                self.news_strategy.run()
+                
                 self.last_scheduler_date = today
                 logging.info("Daily Tasks Completed.")
+
+    def get_aggregated_strategies_status(self):
+        """Combines Macro/Sim strategies + Paper Wallets."""
+        # 1. Macro / Scheduled
+        statuses = []
+        statuses.append(self.macro_strategy.get_status())
+        statuses.append(self.five_cubes_sim.get_status())
+        statuses.append(self.news_strategy.get_status())
+        
+        return statuses

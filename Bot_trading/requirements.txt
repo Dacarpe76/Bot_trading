@@ -1,0 +1,8 @@
+ccxt
+pandas
+ta
+python-dotenv
+requests
+schedule
+yfinance
+matplotlib

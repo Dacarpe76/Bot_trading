@@ -3,7 +3,7 @@ import asyncio
 import logging
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QTextEdit, QPushButton, QFrame, QTabWidget, QDialog, QComboBox, QSplitter,
-                             QFormLayout, QDoubleSpinBox, QSpinBox, QDialogButtonBox)
+                             QFormLayout, QDoubleSpinBox, QSpinBox, QDialogButtonBox, QTreeWidget, QTreeWidgetItem)
 from PyQt6.QtCore import QThread, pyqtSignal, Qt, QTimer
 from PyQt6.QtGui import QColor, QFont, QKeySequence
 import datetime
@@ -71,6 +71,11 @@ class WorkerThread(QThread):
             # Processor (Manages Strategies & Wallets)
             self.strategy = StrategyProcessor()
             
+            # Fetch History Explicitly
+            self.log_signal.emit("Fetching Market History (This may take a moment)...")
+            self.strategy.fetch_all_history()
+            self.log_signal.emit("History Loaded. Starting Analysis...")
+            
             # Callbacks
             self.strategy.on_monitor_update = self.handle_monitor_update
             
@@ -116,11 +121,11 @@ class WorkerThread(QThread):
             # --- Periodic Macro Status Update (e.g. every 10s) ---
             if now.second % 10 == 0:
                  try:
-                     macro_statuses = []
-                     if hasattr(self.strategy, 'macro_strategy'):
-                         macro_statuses.append(self.strategy.macro_strategy.get_status())
-                     if hasattr(self.strategy, 'five_cubes_sim'):
-                         macro_statuses.append(self.strategy.five_cubes_sim.get_status())
+                     if hasattr(self.strategy, 'get_aggregated_strategies_status'):
+                         macro_statuses = self.strategy.get_aggregated_strategies_status()
+                     else:
+                         # Fallback for safety
+                         macro_statuses = []
                      
                      if macro_statuses:
                          self.macro_signal.emit(macro_statuses)
@@ -131,6 +136,7 @@ class WorkerThread(QThread):
             await asyncio.sleep(1) # More granular for second check
 
     def handle_monitor_update(self, monitor_data):
+        # self.log_signal.emit(f"DEBUG: Monitor Update received ({len(monitor_data)} symbols)")
         self.monitor_signal.emit(monitor_data)
         
         # Sync Operations & Dashboard (Aggregation)
@@ -472,14 +478,12 @@ class MainWindow(QMainWindow):
         self.tab_macro = QWidget()
         layout_macro = QVBoxLayout(self.tab_macro)
         
-        self.table_macro = QTableWidget()
-        self.table_macro.setColumnCount(5)
-        self.table_macro.setHorizontalHeaderLabels(["Nombre", "Activo", "Equity/Balance", "Holdings", "Régimen/Modo"])
-        self.table_macro.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        self.table_macro.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch) # Holdings wider
-        self.table_macro.verticalHeader().setVisible(False)
-        self.table_macro.setStyleSheet("font-size: 11pt;")
-        layout_macro.addWidget(self.table_macro)
+        # Use QTreeWidget for Hierarchy
+        self.tree_macro = QTreeWidget()
+        self.tree_macro.setHeaderLabels(["Estrategia / Activo", "Posición", "Precio", "Valor Total", "Info / Régimen"])
+        self.tree_macro.setColumnWidth(0, 250)
+        self.tree_macro.setStyleSheet("font-size: 11pt; QTreeWidget::item { padding: 4px; }")
+        layout_macro.addWidget(self.tree_macro)
         
         self.tabs_main.addTab(self.tab_macro, "Inversión (Macro)")
         
@@ -595,34 +599,69 @@ class MainWindow(QMainWindow):
         self.log_view.append(msg)
         if "Connected" in msg:
             self.lbl_status.setText("System: ONLINE (Kraken Multi-Strategy)")
+            self.lbl_status.setText("System: ONLINE (Kraken Multi-Strategy)")
             self.lbl_status.setStyleSheet("font-weight: bold; color: #00FF00;")
+            
+            # Force Initial Dashboard Render (Zero Values)
+            QTimer.singleShot(2000, lambda: self.handle_monitor_update([]))
 
     def update_macro(self, data):
-        self.table_macro.setRowCount(len(data))
-        for r, d in enumerate(data):
-            self.table_macro.setItem(r, 0, QTableWidgetItem(d.get('name', 'Unknown')))
+        self.tree_macro.clear()
+        
+        for d in data:
+            # 1. Strategy Root Item
+            strat_name = d.get('name', 'Unknown')
+            active = d.get('active', True)
+            status_str = "ACTIVO" if active else "INACTIVO"
             
-            # Active Status
-            act = d.get('active', True) # Default true if not specified (Sim)
-            act_item = QTableWidgetItem("SÍ" if act else "NO")
-            if act: act_item.setForeground(QColor("#00FF00"))
-            else: act_item.setForeground(QColor("#FF0000"))
-            self.table_macro.setItem(r, 1, act_item)
+            # Total Value
+            total_val = d.get('equity', d.get('balance_usdt', 0.0))
+            currency = "€" if "Kraken" in strat_name else "$"
             
-            # Equity / Balance
-            # Unified key 'balance_usdt' or 'equity'
-            val = d.get('equity', d.get('balance_usdt', 0.0))
-            currency = "€" if "Kraken" in d['name'] else "$"
-            self.table_macro.setItem(r, 2, QTableWidgetItem(f"{val:.2f}{currency}"))
+            regime = d.get('regime', d.get('mode', 'Unknown'))
             
-            # Holdings (Dict to String)
-            h = d.get('holdings', {})
-            h_str = ", ".join([f"{k}: {v:.4f}" for k,v in h.items() if v > 0.0001])
-            self.table_macro.setItem(r, 3, QTableWidgetItem(h_str))
+            root = QTreeWidgetItem(self.tree_macro)
+            root.setText(0, strat_name)
+            root.setText(3, f"{total_val:.2f}{currency}")
+            root.setText(4, f"{status_str} | {regime}")
             
-            # Regime
-            reg = d.get('regime', d.get('mode', 'Unknown'))
-            self.table_macro.setItem(r, 4, QTableWidgetItem(str(reg)))
+            # Style Root
+            root.setForeground(0, QColor("#00FFFF")) # Cyan Names
+            root.setExpanded(True)
+            
+            # 2. Holdings (Children)
+            holdings = d.get('holdings', {})
+            prices = d.get('prices', {})
+            
+            # Handle Cash for Binance
+            if "Binance" in strat_name:
+                cash = d.get('balance_usdt', 0.0)
+                if cash > 0.01:
+                    item = QTreeWidgetItem(root)
+                    item.setText(0, "USDT (Cash)")
+                    item.setText(1, f"{cash:.2f}")
+                    item.setText(2, f"1.00$")
+                    item.setText(3, f"{cash:.2f}$")
+            
+            for asset, amt in holdings.items():
+                if amt < 0.0001: continue
+                
+                # Get Price
+                price = prices.get(asset, 0.0)
+                
+                # Correction for EUR cash in Kraken
+                if asset == 'EUR': price = 1.0
+                
+                val = amt * price
+                
+                item = QTreeWidgetItem(root)
+                item.setText(0, asset)
+                item.setText(1, f"{amt:.4f}")
+                item.setText(2, f"{price:.2f}{currency}")
+                item.setText(3, f"{val:.2f}{currency}")
+                
+                # Color code Amount/Value
+                item.setForeground(3, QColor("#00FF00" if val > 0 else "#FFFFFF"))
 
     def update_dashboard(self, data):
         # Dynamic Filter Population (One-time Init)

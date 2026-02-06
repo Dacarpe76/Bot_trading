@@ -75,107 +75,85 @@ class KrakenMacroStrategy:
             self.exchange = None
             logger.warning("Kraken Keys missing. Real Strategy will run in DRY MODE.")
 
-    def run(self):
-        logger.info(">>> Running Kraken Macro Strategy (Real) <<<")
+        # State Persistence
+        self.state = {
+            'equity': 0.0,
+            'holdings': {},
+            'regime': 'Unknown'
+        }
         
-        # 1. Get Indicators
-        inds = IndicatorFetcher.fetch_all()
-        regime = self.policy_engine.detectar_regimen(
-            pmi=inds['pmi'], tips=inds['tips'], vix=inds['vix']
-        )
-        logger.info(f"Market Regime: {regime} (PMI={inds['pmi']}, VIX={inds['vix']:.1f})")
-        
-        if not self.exchange:
-            logger.info("Exchange not connected. Skipping execution.")
-            return
+        # Initial Fetch
+        if self.exchange:
+            try:
+                self.refresh_status()
+            except Exception as e:
+                logger.error(f"Initial Kraken Fetch Failed: {e}")
 
+    def refresh_status(self):
+        """Fetches current balance without trading."""
+        if not self.exchange: return
+        
         try:
-            # 2. Fetch Balance & Prices
             bal = self.exchange.fetch_balance()
-            total_equity = bal['total']['EUR'] # Base in EUR? Or sum of assets?
-            # Kraken 'total' usually gives amounts. We need value.
             
-            # Fetch Prices
-            ticker_btc = self.exchange.fetch_ticker('XBT/EUR')
+            # Fetch Prices (CCXT Normalized)
+            # Kraken CCXT usually uses BTC/EUR, not XBT/EUR
+            try:
+                ticker_btc = self.exchange.fetch_ticker('BTC/EUR')
+            except:
+                ticker_btc = self.exchange.fetch_ticker('XBT/EUR')
+                
             ticker_paxg = self.exchange.fetch_ticker('PAXG/EUR')
             
             price_btc = ticker_btc['last']
             price_paxg = ticker_paxg['last']
             
+            # Normalize Keys: CCXT common vs Raw
+            # Debug showed: 'BTC', 'PAXG', 'EUR' are present directly in 'total'
+            total = bal['total']
+            
             holdings = {
-                'BTC': bal['total'].get('XXBT', bal['total'].get('BTC', 0.0)),
-                'GOLD': bal['total'].get('PAXG', 0.0),
-                'EUR': bal['total'].get('ZEUR', bal['total'].get('EUR', 0.0))
+                'BTC': total.get('BTC', total.get('XXBT', 0.0)),
+                'GOLD': total.get('PAXG', total.get('XDG', 0.0)),
+                'EUR': total.get('EUR', total.get('ZEUR', 0.0))
             }
             
             # Calc Total Equity
             equity = holdings['EUR'] + (holdings['BTC'] * price_btc) + (holdings['GOLD'] * price_paxg)
-            logger.info(f"Total Equity: {equity:.2f} EUR")
             
-            curr_weights = {
-                'btc_weight': (holdings['BTC'] * price_btc) / equity,
-                'gold_weight': (holdings['GOLD'] * price_paxg) / equity
-            }
+            self.state['equity'] = equity
+            self.state['holdings'] = holdings
+            self.state['prices'] = {'BTC': price_btc, 'GOLD': price_paxg, 'EUR': 1.0}
+            logger.info(f"Kraken Status Refreshed: {equity:.2f} EUR")
             
-            # 3. Policy Calculation
-            # Need avg prices for logic. Fetch from trades history or estimation?
-            # For V1, assume avg = current (disable gain-based logic unless we track it locally)
-            avg_prices = {'BTC': price_btc, 'GOLD': price_paxg} 
-            
-            policy_res = self.policy_engine.aplicar_politica(
-                curr_weights, 
-                {'BTC': price_btc, 'GOLD': price_paxg}, 
-                holdings, avg_prices, regime
-            )
-            
-            logger.info(f"Policy Result: {policy_res}")
-            
-            # 4. Execution (Rebalance)
-            self.execute_rebalance(policy_res, equity, holdings, {'BTC': price_btc, 'GOLD': price_paxg})
-
         except Exception as e:
-            logger.error(f"Kraken Execution Failed: {e}")
+            logger.error(f"Refresh Status Failed: {e}")
 
-    def execute_rebalance(self, result, equity, holdings, prices):
-        """Simplistic Rebalancer: Target Value - Current Value."""
+    def run(self):
+        """Executed daily to update strategy state."""
+        logger.info(">>> Running Kraken Real Macro Strategy <<<")
         
-        targets = {
-            'BTC': result['btc_weight'] * equity,
-            'GOLD': result['gold_weight'] * equity,
-        }
-        # EUR is residual
+        # 1. Update Real Balance & Price
+        self.refresh_status()
         
-        # BTC
-        diff_btc_val = targets['BTC'] - (holdings['BTC'] * prices['BTC'])
-        if abs(diff_btc_val) > 10.0: # Threshold 10 EUR
-            amt = abs(diff_btc_val) / prices['BTC']
-            side = 'buy' if diff_btc_val > 0 else 'sell'
-            logger.info(f"ORDER: {side.upper()} BTC {amt:.6f} (~{abs(diff_btc_val):.2f} EUR)")
-            try:
-                self.exchange.create_order('XBT/EUR', 'market', side, amt)
-            except Exception as e:
-                logger.error(f"Order Failed: {e}")
-
-        # GOLD
-        diff_gold_val = targets['GOLD'] - (holdings['GOLD'] * prices['GOLD'])
-        if abs(diff_gold_val) > 10.0:
-            amt = abs(diff_gold_val) / prices['GOLD']
-            side = 'buy' if diff_gold_val > 0 else 'sell'
-            logger.info(f"ORDER: {side.upper()} PAXG {amt:.6f} (~{abs(diff_gold_val):.2f} EUR)")
-            try:
-                self.exchange.create_order('PAXG/EUR', 'market', side, amt)
-            except Exception as e:
-                logger.error(f"Order Failed: {e}")
+        # 2. Determine Regime (Simple Logic for Now)
+        # In a real bot, we would fetch indicators here (like Sim Strategy)
+        # For now, we just identify regime based on holdings
+        h = self.state['holdings']
+        if h['BTC'] > 0.1: # Example threshold
+             self.state['regime'] = 'NET_LONG'
+        else:
+             self.state['regime'] = 'DEFENSIVE'
 
     def get_status(self):
         """Returns current status for GUI."""
-        # Simple text summary or dict
         status = {
             "name": "Kraken Real Macro",
             "active": self.exchange is not None,
-            "equity": 0.0,
-            "holdings": {},
-            "regime": "Unknown"
+            "equity": self.state['equity'],
+            "holdings": self.state['holdings'],
+            "prices": self.state.get('prices', {}),
+            "regime": self.state['regime']
         }
         return status
 
@@ -191,6 +169,7 @@ class FiveCubesSimStrategy:
     def __init__(self):
         self.exchange = ccxt.binance() # Public only needed
         self.initial_capital_eur = 500.0
+        self.current_prices = {}
         self.load_state()
         
         # 5 Cubes Modes
@@ -232,9 +211,6 @@ class FiveCubesSimStrategy:
             inds = IndicatorFetcher.fetch_all()
             
             # Logic from five_cubes_bot.py
-            # F&G < 20 -> ATTACK
-            # DXY < 101 & PMI > 50 -> CRUISE
-            # Else -> SHIELD
             mode = "SHIELD"
             if inds['fng'] < 20: mode = "ATTACK"
             elif inds['dxy'] < 101 and inds['pmi'] > 50: mode = "CRUISE"
@@ -247,6 +223,8 @@ class FiveCubesSimStrategy:
                 tik = self.exchange.fetch_ticker(sym)
                 prices[sym.split('/')[0]] = tik['last']
             
+            self.current_prices = prices # Update current prices
+
             # 3. Calculate Portfolio Value
             total_usdt = self.state['balance_usdt']
             for asset, amt in self.state['holdings'].items():
@@ -259,12 +237,6 @@ class FiveCubesSimStrategy:
             
             new_holdings = self.state['holdings'].copy()
             new_cash = total_usdt
-            
-            # Sell Everything logic first? Or smart rebal?
-            # Simplest: Sell all to cash, buy targets. (Frictionless sim)
-            # Real rebal: Diff.
-            
-            # Let's do Diff rebalance to check minimums
             
             # Target Values
             targets = {k: total_usdt * w for k, w in target_weights.items() if k != 'STABLE'}
@@ -284,8 +256,6 @@ class FiveCubesSimStrategy:
             
             # Execute Buys
             current_cash = self.state['balance_usdt'] # Updated after sells
-            
-            # Recalc targets based on actual Total (slightly different due to price moves?) No, Total is invariant here ignoring fees.
             
             for asset, target_val in targets.items():
                 current_amt = new_holdings.get(asset, 0)
@@ -313,6 +283,121 @@ class FiveCubesSimStrategy:
             "name": "Binance 5 Cubes (Sim)",
             "balance_usdt": self.state.get('balance_usdt', 0),
             "holdings": self.state.get('holdings', {}),
-            "mode": "Unknown" # Ideally cache last mode
+            "prices": self.current_prices,
+            "mode": "Unknown" # Ideally cache last mode in state too, but ok
         }
 
+
+class KrakenNewsStrategy:
+    """
+    Estrategia Evaluativa con Lectura de Noticias.
+    Capital Simulado: 500 EUR.
+    Logic: Buy BTC if Sentiment > 0.5, Sell if < -0.5.
+    """
+    STATE_FILE = "sim_wallet_news.json"
+    
+    def __init__(self):
+        self.initial_capital_eur = 500.0
+        self.current_prices = {}
+        self.exchange = ccxt.kraken() # For price fetching
+        
+        # Initial Load or Reset
+        if os.path.exists(self.STATE_FILE):
+             try:
+                 with open(self.STATE_FILE, 'r') as f:
+                     self.state = json.load(f)
+             except:
+                 self.reset_state()
+        else:
+             self.reset_state()
+             
+    def reset_state(self):
+        self.state = {
+            'balance_eur': self.initial_capital_eur,
+            'holdings': {'BTC': 0.0},
+            'sentiment_history': [],
+            'regime': 'NEUTRAL'
+        }
+        self.save_state()
+        
+    def save_state(self):
+        with open(self.STATE_FILE, 'w') as f:
+            json.dump(self.state, f, indent=4)
+            
+    def check_sentiment(self):
+        """
+        Placeholder for Real News Sentiment Analysis.
+        Returns float between -1.0 (Bearish) and 1.0 (Bullish).
+        """
+        # TODO: Connect to News API (CryptoPanic/LunarCrush)
+        # For now, simulate randomized sentiment for evaluation
+        import random
+        return random.uniform(-0.8, 0.8)
+        
+    def run(self):
+        logger.info(">>> Running Kraken NEWS Strategy (Sim) <<<")
+        try:
+            # 1. Fetch Price
+            ticker = self.exchange.fetch_ticker('BTC/EUR')
+            price = ticker['last']
+            self.current_prices = {'BTC': price}
+            
+            # 2. Check Sentiment
+            sentiment = self.check_sentiment()
+            self.state['sentiment_history'].append({
+                'time': time.time(), 
+                'score': sentiment
+            })
+            
+            # Keep only last 10
+            if len(self.state['sentiment_history']) > 10:
+                self.state['sentiment_history'].pop(0)
+                
+            logger.info(f"News Sentiment Score: {sentiment:.2f}")
+            
+            # 3. Simplify Regime
+            if sentiment > 0.3: self.state['regime'] = 'BULLISH'
+            elif sentiment < -0.3: self.state['regime'] = 'BEARISH'
+            else: self.state['regime'] = 'NEUTRAL'
+            
+            # 4. Trading Logic
+            balance = self.state['balance_eur']
+            btc_amt = self.state['holdings']['BTC']
+            
+            # BUY SIGNAL
+            if sentiment > 0.4 and balance > 10:
+                # Invest 50% of available cash
+                invest_amt = balance * 0.5
+                btc_bought = invest_amt / price
+                
+                self.state['balance_eur'] -= invest_amt
+                self.state['holdings']['BTC'] += btc_bought
+                logger.info(f"NEWS SIM BUY: {btc_bought:.6f} BTC @ {price:.2f}")
+                
+            # SELL SIGNAL
+            elif sentiment < -0.4 and btc_amt * price > 10:
+                # Sell 100%
+                sell_val = btc_amt * price
+                self.state['balance_eur'] += sell_val
+                self.state['holdings']['BTC'] = 0.0
+                logger.info(f"NEWS SIM SELL: {btc_amt:.6f} BTC @ {price:.2f}")
+                
+            self.save_state()
+            
+        except Exception as e:
+            logger.error(f"News Strategy Failed: {e}")
+
+    def get_status(self):
+        # Calculate Equity
+        btc_val = self.state['holdings']['BTC'] * self.current_prices.get('BTC', 0)
+        equity = self.state['balance_eur'] + btc_val
+        
+        return {
+            "name": "Kraken News (Sim)",
+            "active": True,
+            "equity": equity,
+            "balance_usdt": equity, # Mapping for GUI
+            "holdings": self.state['holdings'],
+            "prices": self.current_prices,
+            "regime": f"{self.state['regime']} (S={self.state['sentiment_history'][-1]['score']:.2f})" if self.state['sentiment_history'] else "WAITING"
+        }

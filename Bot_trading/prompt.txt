@@ -1,0 +1,19 @@
+ACTÚA COMO: Desarrollador Senior de Trading Algorítmico.
+
+INSTRUCCIÓN:
+Construye el sistema de inversión definido en 'ESPECIFICACIONES_PROYECTO.md' enfocado únicamente en KRAKEN.
+
+TAREAS PRIORITARIAS:
+1. ENTORNO: Crea un entorno virtual e instala ccxt, pandas_ta y python-dotenv.
+2. MODO SIMULACIÓN: El bot debe arrancar por defecto en 'Modo Simulación' (Paper Trading), leyendo precios reales de Kraken pero sin ejecutar órdenes reales, hasta que yo confirme que hay saldo.
+3. MOTOR TÉCNICO: Implementa los indicadores MACD (8,17,9), EMA 200 y el cálculo de posición por ATR.
+4. TELEGRAM: Configura el reporte diario para que me informe de:
+   - Balance total en Euros.
+   - Estado del 'Cubo de Gastos' (10% de beneficios simulados/reales).
+   - Próxima operación prevista según los indicadores.
+5. RESILIENCIA: Asegura que el bot no se detenga por errores de conexión; debe esperar 5 minutos y reintentar.
+
+REFERENCIA DE ARCHIVOS:
+Utiliza '.env' para las claves (KRAKEN_API_KEY, KRAKEN_PRIVATE_KEY, TELEGRAM_TOKEN, MY_CHAT_ID).
+
+DAME UN RESUMEN DEL PLAN DE CÓDIGO ANTES DE EMPEZAR.
