@@ -1,0 +1,1569 @@
+import logging
+import time
+from kraken_bot import config
+
+class BaseStrategy:
+    def __init__(self, strategy_id, wallet):
+        self.id = strategy_id
+        self.wallet = wallet
+        self.dca_enabled = True
+        self.paused = False 
+        self.dca_enabled = True
+        self.paused = False 
+        self.allowed_sides = ['LONG', 'SHORT']
+        self.on_event = None
+        self.start_time = time.time()
+        
+        self.params = {
+            'vrel_min': 3.0,
+            'err_min': 2.5,
+            'rsi_long_max': 40.0,
+            'rsi_short_min': 60.0,
+            'adx_min': 0.0,
+            'wick_min': 0.0,
+            'ts_atr_mult': 3.0,
+            'tsl_pct': 0.015
+        }
+    
+    def on_tick(self, symbol, price, indicators):
+        """Called on every trade/tick."""
+        self.check_exit_conditions(symbol, price, indicators)
+        
+        if not self.paused:
+            self.check_entry_logic(symbol, price, indicators)
+
+    def check_entry_logic(self, symbol, price, indicators):
+        """Standard Entry Logic using Params (S1/S2 style)."""
+        # Validate critical data
+        if 'vrel' not in indicators or 'err' not in indicators: return
+
+        vrel = float(indicators.get('vrel', 0))
+        err = float(indicators.get('err', 0))
+        rsi = float(indicators.get('rsi', 50))
+        
+        wick_val = float(indicators.get('Wick_Body_Ratio', indicators.get('wick_pct', 0)))
+
+        # 1. Base Checks
+        if vrel < self.params.get('vrel_min', 0): return
+        if err < self.params.get('err_min', 0): return
+        if wick_val < self.params.get('wick_min', 0): return
+        
+        # 0. Global Trend Defense (Panic Mode)
+        trend = indicators.get('market_trend', 'NEUTRAL')
+        
+        # 2. RSI Filters
+        # LONG
+        if rsi < self.params.get('rsi_long_max', 100):
+             if trend == 'DUMP':
+                 logging.info(f"[{self.id}] LONG BLOCKED by Global Trend DUMP")
+                 return
+
+             if self.on_event: self.on_event("Opportunity", self.id, symbol, price, indicators)
+             c, r = self.wallet.can_open_new(symbol, 'LONG', {symbol: price})
+             if c:
+                 self.wallet.open_position(symbol, 'LONG', price)
+                 if self.on_event: self.on_event("Open_Auto", self.id, symbol, price, indicators)
+                 return
+
+        # SHORT
+        if rsi > self.params.get('rsi_short_min', 0):
+             # Log Opportunity
+             if self.on_event: self.on_event("Opportunity", self.id, symbol, price, indicators)
+             c, r = self.wallet.can_open_new(symbol, 'SHORT', {symbol: price})
+             if c:
+                 self.wallet.open_position(symbol, 'SHORT', price)
+                 if self.on_event: self.on_event("Open_Auto", self.id, symbol, price, indicators)
+
+
+    def confirm_entry(self, symbol, side, price, indicators):
+        """Legacy Processor Call - Deprecated in favor of on_tick logic."""
+        return False, "Autonomous_Mode"
+
+    def check_dca(self, pos, price, atr, indicators):
+        pass
+
+    def check_time_based_exit(self, t_id, pos, price, indicators=None):
+        """
+        Time-Based Exit Rules:
+        1. Limit 1: If duration > limit_1, Set TP = +0.01 EUR. (Close if Net PnL >= 0.01)
+        2. Limit 2: If duration > limit_2, Set SL = -0.05 EUR. (Close if Net PnL <= -0.05)
+        """
+        duration = time.time() - pos['entry_time']
+        limit_1 = self.params.get('time_limit_1', 0)
+        limit_2 = self.params.get('time_limit_2', 0)
+        
+        if limit_1 == 0: return False # Not configured
+
+        # Calculate exact Net PnL in EUR
+        gross = self.wallet.calc_pnl_gross(t_id, price)
+        
+        # Estimate Exit Fee
+        val_exit = pos['size'] * price
+        if pos['type'] == 'LONG': fee_rate = config.FEE_SPOT_TAKER
+        else: fee_rate = config.FEE_FUTURES_TAKER
+        
+        fees_total = pos.get('itemized_fees', 0.0) + (val_exit * fee_rate)
+        net_val = gross - fees_total
+
+        # Rule 2: Global Trailing Stop (Replaces Limit 2)
+        # Trigger: Net PnL >= +0.04 EUR.
+        # Trailing Dist: 0.02 EUR.
+        trigger_eur = 0.04
+        trail_dist_eur = 0.02
+        
+        # Check Activation
+        if net_val >= trigger_eur:
+            # Calculate required stop PnL (Current - Distance)
+            target_stop_pnl = net_val - trail_dist_eur
+            
+            # Convert PnL to Price Level
+            # Net = (Size * (Exit - Entry)) - Fees -> For Long
+            # Net = (Size * (P - Entry)) - (ItemFees + Size*P*Rate)
+            # Net = Size*P - Size*Entry - ItemFeatures - Size*P*Rate
+            # Net + Size*Entry + ItemFees = Size*P*(1 - Rate)
+            # P = (Net + Size*Entry + ItemFees) / (Size * (1 - Rate))
+            
+            # Helper to calculate Price from Net PnL
+            def get_price_from_net(target_net):
+                term_fees = pos.get('itemized_fees', 0.0)
+                term_entry = pos['size'] * pos['entry_price']
+                
+                if pos['type'] == 'LONG':
+                    numerator = target_net + term_entry + term_fees
+                    denominator = pos['size'] * (1 - config.FEE_SPOT_TAKER)
+                else:
+                    # Net = (Entry - Exit) - Fees
+                    # Net = Size*Entry - Size*P - ItemFees - Size*P*Rate
+                    # Net - Size*Entry + ItemFees = -Size*P(1 + Rate)
+                    # Size*Entry - Net - ItemFees = Size*P(1 + Rate)
+                    numerator = term_entry - target_net - term_fees
+                    denominator = pos['size'] * (1 + config.FEE_FUTURES_TAKER)
+                    
+                if denominator == 0: return price # Prevent div/0
+                return numerator / denominator
+
+            new_stop_price = get_price_from_net(target_stop_pnl)
+            
+            # Update Stop
+            current_stop = pos.get('global_ts_price', 0.0)
+            
+            # Init if 0 (first trigger)
+            if current_stop == 0.0:
+                 pos['global_ts_price'] = new_stop_price
+                 logging.info(f"[{self.id}] Global TS Activated {pos['symbol']} @ {price:.4f} (Net: {net_val:.4f}). Stop: {new_stop_price:.4f}")
+            else:
+                 # Update if better
+                 if pos['type'] == 'LONG':
+                     if new_stop_price > current_stop:
+                         pos['global_ts_price'] = new_stop_price
+                 else: # SHORT
+                     if new_stop_price < current_stop:
+                         pos['global_ts_price'] = new_stop_price
+        
+        # Check Exit Trigger
+        ts_price = pos.get('global_ts_price', 0.0)
+        if ts_price > 0:
+             fired = False
+             if pos['type'] == 'LONG' and price <= ts_price: fired = True
+             if pos['type'] == 'SHORT' and price >= ts_price: fired = True
+             
+             if fired:
+                 logging.info(f"[{self.id}] Global TS Hit {pos['symbol']} @ {price:.4f} (Stop: {ts_price:.4f})")
+                 if self.wallet.close_position(t_id, price):
+                     if self.on_event: self.on_event("Close_Global_TS", self.id, pos['symbol'], price, indicators)
+                 return True
+
+        # Rule 1: Limit 1 (Standard Time) -> Scratch at +0.01 Profit
+        # Only if Global TS is NOT active (Prioritize Trailing)
+        if duration > limit_1 and not pos.get('global_ts_price'):
+             if net_val >= 0.01:
+                logging.info(f"[{self.id}] Time Limit 1 ({limit_1}s) Exceeded & PnL {net_val:.2f} >= 0.01. Closing.")
+                if self.wallet.close_position(t_id, price):
+                     if self.on_event: self.on_event("Close_TimeLimit_Profit", self.id, pos['symbol'], price, indicators)
+                return True
+                
+        return False
+
+    def check_exit_conditions(self, symbol, price, indicators):
+        for t_id, pos in list(self.wallet.positions.items()):
+            if pos['symbol'] == symbol:
+                self.wallet.update_max_stats(t_id, price) # <--- Update Max PnL
+                self.manage_position(t_id, pos, price, indicators)
+
+    def manage_position(self, t_id, pos, price, indicators):
+        pass
+
+
+class StrategyAggressive(BaseStrategy): 
+    """S3: Aggressive (No DCA) + Momentum Crash Entry"""
+    def __init__(self, wallet, allowed_sides=['LONG', 'SHORT']):
+        super().__init__("Aggressive", wallet)
+        self.allowed_sides = allowed_sides
+        self.dca_enabled = False
+        self.params.update({
+            'vrel_min': 3.0,
+            'err_min': 2.5,
+            'climax_vrel': 10.0,
+            'climax_rsi_long': 15.0,
+            'climax_rsi_short': 85.0,
+            'rsi_long_max': 40.0,
+            'rsi_short_min': 60.0,
+            'momentum_mfi_limit': 15.0,
+            'momentum_adx_min': 25.0,
+            'momentum_ts_pct': 0.008,
+            'ts_atr_mult': 3.0,
+            'time_limit_1': 14400, # 4 Hours
+            'time_limit_2': 28800  # 8 Hours
+        })
+
+    def check_momentum_entry(self, symbol, price, indicators):
+        try:
+            bb_lower = float(indicators.get('Bollinger_Lower', 0))
+            if bb_lower == 0 or price >= bb_lower: return False
+            
+            mfi = float(indicators.get('MFI_14', 50))
+            if mfi >= self.params['momentum_mfi_limit']: return False
+            
+            adx = float(indicators.get('ADX_14', 0))
+            if adx < self.params['momentum_adx_min']: return False
+            
+        except (ValueError, TypeError):
+            return False
+        
+        return True
+
+    def check_entry_logic(self, symbol, price, indicators):
+        # 1. Momentum Short Logic (Priority)
+        if 'SHORT' in self.allowed_sides:
+            if self.check_momentum_entry(symbol, price, indicators):
+                 c, r = self.wallet.can_open_new(symbol, 'SHORT', {symbol: price})
+                 if c:
+                     if self.wallet.open_position(symbol, 'SHORT', price):
+                         # Tag Position immediately
+                         target_pos = None
+                         max_time = 0
+                         for pid, p in self.wallet.positions.items():
+                             if p['symbol'] == symbol and p['type'] == 'SHORT' and p['entry_time'] > max_time:
+                                 target_pos = p
+                                 max_time = p['entry_time']
+                         
+                         if target_pos:
+                             target_pos['strategy_mode'] = 'momentum'
+                             target_pos['ts_status'] = 'ACTIVE' # Start Active
+                             target_pos['lowest_price'] = price
+                         
+                         if self.on_event: self.on_event("Open_Mom_Short", self.id, symbol, price, indicators)
+                         return
+
+        # 2. Standard S3 Logic: Aggressive (High VRel/ERR) OR Climax
+
+
+        # 2. Standard S3 Logic: Aggressive (High VRel/ERR) OR Climax
+        if 'vrel' not in indicators: return
+        
+        vrel = float(indicators.get('vrel', 0))
+        err = float(indicators.get('err', 0))
+        rsi = float(indicators.get('rsi', 50))
+        
+        # Base
+        base_L = (vrel > self.params['vrel_min']) and (err > self.params['err_min']) and (rsi < self.params['rsi_long_max'])
+        base_S = (vrel > self.params['vrel_min']) and (err > self.params['err_min']) and (rsi > self.params['rsi_short_min'])
+        
+        # Climax
+        climax_L = (vrel > self.params['climax_vrel']) and (rsi < self.params['climax_rsi_long'])
+        climax_S = (vrel > self.params['climax_vrel']) and (rsi > self.params['climax_rsi_short'])
+        
+        side = None
+        if (base_L or climax_L) and 'LONG' in self.allowed_sides: side = 'LONG'
+        if (base_S or climax_S) and 'SHORT' in self.allowed_sides: side = 'SHORT'
+        
+        if side:
+             c, r = self.wallet.can_open_new(symbol, side, {symbol: price})
+             if c:
+                 if self.wallet.open_position(symbol, side, price):
+                      if self.on_event: self.on_event("Open_Aggr", self.id, symbol, price, indicators)
+
+    def manage_position(self, t_id, pos, price, indicators):
+        # 0. Time Based Exit (New)
+        if self.check_time_based_exit(t_id, pos, price, indicators):
+            return
+
+        # Override for Momentum Mode
+        if pos.get('strategy_mode') == 'momentum':
+            if pos['type'] == 'SHORT':
+                pos['lowest_price'] = min(pos.get('lowest_price', price), price)
+                
+                # Dynamic TS %
+                ts_pct = self.params.get('momentum_ts_pct', 0.008)
+                
+                ts_price = pos['lowest_price'] * (1 + ts_pct)
+                pos['ts_price'] = ts_price 
+                
+                if price > ts_price:
+                     logging.info(f"[{self.id}] Momentum TS Hit {pos['symbol']}")
+                     if self.wallet.close_position(t_id, price):
+                         if self.on_event: self.on_event("Close_Mom_TS", self.id, pos['symbol'], price, indicators)
+            return
+                
+        # Standard Logic (From Snipper)
+        atr = indicators.get('atr', 0.0)
+        if atr == 0: return
+
+        if pos['type'] == 'LONG':
+            pos['highest_price'] = max(pos.get('highest_price', price), price)
+            pnl_net_pct = self.wallet.calc_pnl_pct_net(t_id, price)
+            
+            ts_calculated = pos['highest_price'] - (self.params.get('ts_atr_mult', 3.0) * atr)
+            current_ts = pos.get('ts_price', ts_calculated)
+            
+            # Natural Advance
+            if ts_calculated > current_ts:
+                ts = ts_calculated
+                pos['last_ts_update'] = time.time()
+            else:
+                # Time Advance
+                ts = current_ts
+                if time.time() - pos.get('last_ts_update', pos['entry_time']) > 600:
+                     ts += (atr * 0.1)
+                     pos['last_ts_update'] = time.time()
+
+            # Activation > 0.4%
+            is_active = pos.get('ts_status') == "ACTIVE"
+            if is_active or pnl_net_pct > 0.4:
+                pos['ts_status'] = "ACTIVE"
+                limit = pos['entry_price'] * 1.001
+                if ts < limit: ts = limit
+                pos['ts_price'] = ts
+                
+                if price < ts:
+                    if price > pos['entry_price']: # Secure profit
+                         if self.wallet.close_position(t_id, price):
+                             if self.on_event: self.on_event("Close_Trail", self.id, pos['symbol'], price, indicators)
+                    else: 
+                         # Gap down? Hold?
+                         pass
+        else: # SHORT
+            pos['lowest_price'] = min(pos.get('lowest_price', price), price)
+            pnl_net_pct = self.wallet.calc_pnl_pct_net(t_id, price)
+            
+            ts_calculated = pos.get('lowest_price') + (self.params.get('ts_atr_mult', 3.0) * atr)
+            current_ts = pos.get('ts_price', ts_calculated)
+            
+            if ts_calculated < current_ts:
+                 ts = ts_calculated
+                 pos['last_ts_update'] = time.time()
+            else:
+                 ts = current_ts
+                 if time.time() - pos.get('last_ts_update', pos['entry_time']) > 600:
+                      ts -= (atr * 0.1)
+                      pos['last_ts_update'] = time.time()
+
+            is_active = pos.get('ts_status') == "ACTIVE"
+            if is_active or pnl_net_pct > 0.4:
+                pos['ts_status'] = "ACTIVE"
+                limit = pos['entry_price'] * 0.999
+                if ts > limit: ts = limit
+                pos['ts_price'] = ts
+                
+                if price > ts:
+                    if price < pos['entry_price']:
+                         if self.wallet.close_position(t_id, price):
+                             if self.on_event: self.on_event("Close_Trail", self.id, pos['symbol'], price, indicators)
+
+    def confirm_entry(self, symbol, side, price, indicators):
+        return False, "Autonomous_Mode"
+
+class StrategyAggressiveCent(BaseStrategy): 
+    """S4: Aggressive Cent (No DCA)"""
+    def __init__(self, wallet, allowed_sides=['LONG', 'SHORT']):
+        super().__init__("AggrCent", wallet)
+        self.allowed_sides = allowed_sides
+        self.dca_enabled = False
+        self.params.update({
+            'vrel_min': 3.0, 
+            'err_min': 2.5,
+            'climax_vrel': 10.0,
+            'climax_rsi_long': 15.0,
+            'climax_rsi_short': 85.0,
+            'rsi_long_max': 40.0, 
+            'rsi_short_min': 60.0,
+            'profit_activation_eur': 0.10, 
+            'profit_preserve_eur': 0.05,   
+            'profit_step_eur': 0.01,
+            'adx_min': 20.0,
+            'adx_max': 45.0, # (The Ceiling Rule)
+            'vrel_max': 5.0, # (VRel Cap)
+            'time_limit_1': 3600, # 1 Hour
+            'time_limit_2': 7200  # 2 Hours
+        })
+
+    def check_entry_logic(self, symbol, price, indicators):
+         # S4: Aggressive Cent (Blindada)
+        if 'vrel' not in indicators: return
+        vrel = float(indicators.get('vrel', 0))
+        err = float(indicators.get('err', 0))
+        rsi = float(indicators.get('rsi', 50))
+        adx = float(indicators.get('ADX_14', 0))
+        
+        # 0. Safety Filters (The "Vaccine")
+        if adx <= self.params['adx_min']: return # Trend too weak
+        if adx >= self.params['adx_max']: return # Trend too strong (Tsunami)
+        if vrel >= self.params['vrel_max']: return # Volume Panic/Euphoria
+
+        base_L = (vrel > self.params['vrel_min']) and (err > self.params['err_min']) and (rsi < self.params['rsi_long_max'])
+        base_S = (vrel > self.params['vrel_min']) and (err > self.params['err_min']) and (rsi > self.params['rsi_short_min'])
+        
+        climax_L = (vrel > self.params['climax_vrel']) and (rsi < self.params['climax_rsi_long'])
+        climax_S = (vrel > self.params['climax_vrel']) and (rsi > self.params['climax_rsi_short'])
+        
+        side = None
+        if (base_L or climax_L) and 'LONG' in self.allowed_sides: side = 'LONG'
+        if (base_S or climax_S) and 'SHORT' in self.allowed_sides: side = 'SHORT'
+        
+        if side:
+             c, r = self.wallet.can_open_new(symbol, side, {symbol: price})
+             if c:
+                 if self.wallet.open_position(symbol, side, price):
+                      if self.on_event: self.on_event("Open_AggrCent", self.id, symbol, price, indicators)
+
+    def confirm_entry(self, symbol, side, price, indicators):
+        return False, "Autonomous_Mode"
+    
+    def manage_position(self, t_id, pos, price, indicators):
+        # 0. Time Based Exit (New)
+        if self.check_time_based_exit(t_id, pos, price, indicators):
+            return
+
+        # PnL Value Logic (EUR)
+        gross = self.wallet.calc_pnl_gross(t_id, price)
+        
+        # Est Fees
+        val_exit = pos['size'] * price
+        if pos['type'] == 'LONG': fee_rate = config.FEE_SPOT_TAKER
+        else: fee_rate = config.FEE_FUTURES_TAKER
+        
+        fees_total = pos.get('itemized_fees', 0.0) + (val_exit * fee_rate)
+        net_val = gross - fees_total
+        
+        # Activation
+        act_eur = self.params.get('profit_activation_eur', 0.04)
+        pres_eur = self.params.get('profit_preserve_eur', 0.02)
+        step_eur = self.params.get('profit_step_eur', 0.01)
+
+        is_active = pos.get('ts_status') == "ACTIVE"
+        
+        if not is_active:
+            if net_val >= act_eur:
+                pos['ts_status'] = "ACTIVE"
+                # Init Stop at preserve_eur Profit
+                target_pnl = pres_eur
+                req_gross = target_pnl + fees_total
+                price_diff = req_gross / pos['size']
+                
+                if pos['type'] == 'LONG':
+                    ts_price = pos['avg_price'] + price_diff
+                else:
+                    ts_price = pos['avg_price'] - price_diff
+                    
+                pos['ts_price'] = ts_price
+                pos['last_stop_move_time'] = time.time()
+                pos['high_water_mark'] = net_val 
+        else:
+            # Check Exit
+            if (pos['type']=='LONG' and price < pos['ts_price']) or (pos['type']=='SHORT' and price > pos['ts_price']):
+                 logging.info(f"[{self.id}] Cent TS Exit {pos['symbol']} @ {price} (TS: {pos['ts_price']:.4f})")
+                 if self.wallet.close_position(t_id, price):
+                     if self.on_event: self.on_event("Close_Trail", self.id, pos['symbol'], price, indicators)
+                 return
+
+            # Check Updates (Step)
+            # Basic Step Logic:
+            excess = max(0, net_val - act_eur)
+            steps = int(excess / step_eur) if step_eur > 0 else 0
+            
+            # Target protected profit
+            target_stop_pnl = pres_eur + (steps * step_eur)
+            
+            req_gross = target_stop_pnl + fees_total
+            price_diff = req_gross / pos['size']
+             
+            if pos['type'] == 'LONG':
+                new_ts = pos['avg_price'] + price_diff
+                if new_ts > pos['ts_price']:
+                    pos['ts_price'] = new_ts
+                    pos['last_stop_move_time'] = time.time() 
+            else:
+                new_ts = pos['avg_price'] - price_diff
+                if new_ts < pos['ts_price']:
+                    pos['ts_price'] = new_ts
+                    pos['last_stop_move_time'] = time.time()
+            
+            # Time Logic ("Regla de Inactividad")
+            if time.time() - pos.get('last_stop_move_time', time.time()) >= 300:
+                # Force +0.01 EUR (Inactivity)
+                shift = 0.01 / pos['size']
+                
+                if pos['type'] == 'LONG':
+                    # Raise stop
+                    pos['ts_price'] += shift
+                    # Check if triggered immediately?
+                    if pos['ts_price'] > price:
+                         self.wallet.close_position(t_id, price)
+                         if self.on_event: self.on_event("Close_Inactivity", self.id, pos['symbol'], price, indicators)
+        return False, "No Signal"
+
+class StrategyHybridElite(BaseStrategy):
+    """
+    S8: Hybrid Elite (S3 Entry + S4 Exit + Context).
+    Entry: Aggressive Momentum (RSI/VRel) + BTC Trend Adaptation.
+    Exit: PnL Preservation (Cent-based Trailing).
+    """
+    def __init__(self, wallet, allowed_sides=['LONG', 'SHORT']):
+        super().__init__("HybridElite", wallet)
+        self.allowed_sides = allowed_sides
+        self.dca_enabled = False # No DCA, pure Sniper
+        
+        self.params.update({
+            'vrel_min': 3.0,
+            'err_min': 2.5,
+            'rsi_long_max': 30.0, # CRITICAL CHANGE: 45 -> 30 (Strict Oversold)
+            'rsi_short_min': 60.0, 
+            
+            # PnL Exit (S4)
+            'profit_activation_eur': 0.08,
+            'profit_preserve_eur': 0.04,
+            'profit_step_eur': 0.01,
+            
+            'time_limit_1': 3600,
+            'time_limit_2': 7200
+        })
+
+    def check_entry_logic(self, symbol, price, indicators):
+        # 1. Base Checks
+        if 'vrel' not in indicators: return
+        vrel = float(indicators.get('vrel', 0))
+        err = float(indicators.get('err', 0))
+        rsi = float(indicators.get('rsi', 50))
+        adx = float(indicators.get('ADX_14', 0))
+        trend = indicators.get('market_trend', 'NEUTRAL')
+        
+        # Adaptive Thresholds
+        rsi_L_limit = self.params['rsi_long_max']
+        rsi_S_limit = self.params['rsi_short_min']
+        
+        # Protective adjustment: High ADX = Strong Trend = Caution countering
+        if adx > 40:
+             # If trending down hard, need RSI to be VERY low to buy
+             rsi_L_limit = 20.0
+        
+        if trend == 'DUMP':
+            # Block Longs
+            rsi_L_limit = -1.0 
+            # Encourage Shorts
+            rsi_S_limit = 50.0 
+        
+        # 0. Green Candle Confirmation (Don't catch falling knives)
+        # Check if Price > Open
+        candle_open = float(indicators.get('Open', -1))
+        if candle_open > 0 and price <= candle_open:
+             # Candle is RED or Flat. Wait for reversal.
+             return
+
+        # 0.1. Stoch Momentum Confirmation (Avoid Dead Cat Bounce)
+        stoch_k = float(indicators.get('Stoch_K', 50))
+        stoch_d = float(indicators.get('Stoch_D', 50))
+        if stoch_k < stoch_d: 
+             return # Momentum still bearish
+
+        # Logic
+        base_L = (vrel > self.params['vrel_min']) and (err > self.params['err_min']) and (rsi < rsi_L_limit)
+        base_S = (vrel > self.params['vrel_min']) and (err > self.params['err_min']) and (rsi > rsi_S_limit)
+        
+        side = None
+        if base_L and 'LONG' in self.allowed_sides: side = 'LONG'
+        if base_S and 'SHORT' in self.allowed_sides: side = 'SHORT'
+        
+        if side:
+             c, r = self.wallet.can_open_new(symbol, side, {symbol: price})
+             if c:
+                 if self.wallet.open_position(symbol, side, price):
+                      if self.on_event: self.on_event("Open_HybridElite", self.id, symbol, price, indicators)
+
+    def manage_position(self, t_id, pos, price, indicators):
+        # Use S4 (AggrCent) Exit Logic (Direct Copy for now, or mixin?)
+        # Let's re-implement for clarity to ensure parameters are respected
+        
+        # 0. Time Based Exit
+        if self.check_time_based_exit(t_id, pos, price, indicators): return
+
+        # PnL Value Logic (EUR)
+        gross = self.wallet.calc_pnl_gross(t_id, price)
+        
+        # Est Fees
+        val_exit = pos['size'] * price
+        if pos['type'] == 'LONG': fee_rate = config.FEE_SPOT_TAKER
+        else: fee_rate = config.FEE_FUTURES_TAKER
+        
+        fees_total = pos.get('itemized_fees', 0.0) + (val_exit * fee_rate)
+        net_val = gross - fees_total
+        
+        # Activation
+        act_eur = self.params.get('profit_activation_eur', 0.08)
+        pres_eur = self.params.get('profit_preserve_eur', 0.04)
+        step_eur = self.params.get('profit_step_eur', 0.01)
+
+        is_active = pos.get('ts_status') == "ACTIVE"
+        
+        if not is_active:
+            if net_val >= act_eur:
+                pos['ts_status'] = "ACTIVE"
+                # Init Stop
+                req_gross = pres_eur + fees_total
+                price_diff = req_gross / pos['size']
+                
+                if pos['type'] == 'LONG': ts_price = pos['avg_price'] + price_diff
+                else: ts_price = pos['avg_price'] - price_diff
+                    
+                pos['ts_price'] = ts_price
+                pos['high_water_mark'] = net_val 
+                logging.info(f"[{self.id}] Hybrid Active! Locked {pres_eur} EUR")
+        else:
+            # Check Exit
+            if (pos['type']=='LONG' and price < pos['ts_price']) or (pos['type']=='SHORT' and price > pos['ts_price']):
+                 logging.info(f"[{self.id}] Hybrid Exit {pos['symbol']} @ {price} (Net: {net_val:.3f})")
+                 if self.wallet.close_position(t_id, price):
+                     if self.on_event: self.on_event("Close_Hybrid", self.id, pos['symbol'], price, indicators)
+                 return
+
+            # Check Updates (Step)
+            excess = max(0, net_val - act_eur)
+            steps = int(excess / step_eur) if step_eur > 0 else 0
+            target_stop_pnl = pres_eur + (steps * step_eur)
+            
+            req_gross = target_stop_pnl + fees_total
+            price_diff = req_gross / pos['size']
+             
+            if pos['type'] == 'LONG':
+                new_ts = pos['avg_price'] + price_diff
+                if new_ts > pos['ts_price']:
+                    pos['ts_price'] = new_ts
+            else:
+                new_ts = pos['avg_price'] - price_diff
+                if new_ts < pos['ts_price']:
+                    pos['ts_price'] = new_ts
+
+class StrategyRollingDCA(BaseStrategy):
+    """
+    RollingDCA: Peace of Mind Strategy.
+    Timeframe: 5m
+    Logic: Buy RSI(5m) < 40. Scale In (DCA) on drops.
+    Exit: Avg Price + 1.2%.
+    """
+    def __init__(self, wallet, allowed_sides=['LONG']):
+        super().__init__("RollingDCA", wallet)
+        self.allowed_sides = allowed_sides
+        self.dca_enabled = True 
+        # DCA Config
+        self.dca_steps = [
+            {'drop': -0.015, 'mult': 1.5}, # Step 1
+            {'drop': -0.030, 'mult': 2.0}, # Step 2
+            {'drop': -0.050, 'mult': 3.0}  # Step 3 (Total ~7.5x base)
+        ]
+        
+        self.params.update({
+            'rsi_5m_entry': 40.0,
+            'take_profit_net_pct': 1.0, # FIXED 1% NET
+            'max_concurrent': 3
+        })
+
+    def calc_safe_entry_size(self):
+        # Total Multiplier Sum = 1 (Base) + 1.5 + 2.0 + 3.0 = 7.5
+        total_mult = 1.0 + sum(s['mult'] for s in self.dca_steps)
+        # Max Concurrent Positions = 3
+        # Safe Allocation per coin = Total Balance / (MaxConcurrent * TotalMult)
+        # We use Total Balance (Initial + Realized) or Free? 
+        # Use Total Equity to size.
+        equity = self.wallet.balance_eur # Conservative: Use Realized Balance only
+        equity = max(equity, 1000.0) # Floor at initial config
+        
+        safe_size = equity / (self.params['max_concurrent'] * total_mult)
+        # Keep > Min Order
+        return max(safe_size, 15.0)
+
+    def check_entry_logic(self, symbol, price, indicators):
+        # 1. Check Max Concurrent
+        active_count = 0
+        for p in self.wallet.positions.values():
+            if p.get('strategy') == self.id: active_count += 1
+        
+        if active_count >= self.params['max_concurrent']: return
+
+        # 2. Check 5m RSI (Injected)
+        rsi_5m = float(indicators.get('rsi_5m', 50.0))
+        if rsi_5m >= self.params['rsi_5m_entry']: return
+        
+        # 3. Green Candle Check (on 5m? or 1m?)
+        # Let's use 1m Green Candle as trigger trigger within the 5m setup
+        # Or Price > 5m Close? live price > 5m Open?
+        # indicators.get('close_5m') is the *Last Closed* 5m candle close.
+        # This is useless for live candle color.
+        # Check 1m Green
+        candle_open = float(indicators.get('Open', -1))
+        if candle_open > 0 and price <= candle_open: return
+
+        # Entry
+        size_eur = self.calc_safe_entry_size()
+        c, r = self.wallet.can_open_new(symbol, 'LONG', {symbol: price})
+        if c:
+             # Override size
+             qty = size_eur / price
+             # Check constraints again with qty? PaperWallet handles balance check.
+             if self.wallet.open_position(symbol, 'LONG', price, quantity=qty):
+                 if self.on_event: self.on_event("Open_DCA_Base", self.id, symbol, price, indicators)
+
+    def manage_position(self, t_id, pos, price, indicators):
+         # 1. Fixed Net Take Profit (1.0%)
+         pnl_net_pct = self.wallet.calc_pnl_pct_net(t_id, price)
+         
+         if pnl_net_pct >= self.params.get('take_profit_net_pct', 1.0):
+             logging.info(f"[{self.id}] TP Hit {pos['symbol']} @ {price} (Net: {pnl_net_pct:.2f}%)")
+             if self.wallet.close_position(t_id, price):
+                 if self.on_event: self.on_event("Close_TP_Net", self.id, pos['symbol'], price, indicators)
+             return
+
+         # 2. Check DCA Step
+         # Current Drawdown
+         avg_price = pos['avg_price']
+         pnl_pct = (price - avg_price) / avg_price
+         
+         current_step = pos.get('dca_step', 0)
+         if current_step >= len(self.dca_steps): return # Max Steps Reached
+         
+         next_cfg = self.dca_steps[current_step]
+         target_drop = next_cfg['drop']
+         
+         if pnl_pct <= target_drop:
+             # Trigger DCA
+             # Wait for Green Candle? Ideally yes, but DCA is "buying the dip".
+             # Let's just buy limit. Or market if touched.
+             
+             # Calculate Size
+             # Base Size was initial. 
+             # We need to know base size. 
+             # Approx: entry_size = pos['size'] (if step 0).
+             # Better: Recalculate safe size or store initial base size in pos?
+             # Let's recalculate simply: 
+             # If step 0 (1 unit), step 1 adds 1.5 units.
+             # Current size = 1 unit. New buy = 1.5 * Current Size ? NO.
+             # New buy = 1.5 * (Initial Base).
+             # We can deduce initial base roughly: pos['size'] / sum(prev_mults).
+             
+             # Simplified: Just buy Multiplier * (Current Pos Size / Sum_Mult_So_FAr).
+             # Too complex. Let's just buy Multiplier * (Safe Entry Size).
+             base_eur = self.calc_safe_entry_size()
+             buy_eur = base_eur * next_cfg['mult']
+             
+             qty = buy_eur / price
+             
+             if self.wallet.add_to_position(t_id, price, qty):
+                 pos['dca_step'] = current_step + 1
+                 logging.info(f"[{self.id}] DCA Step {current_step+1} Exectued for {pos['symbol']}")
+                 if self.on_event: self.on_event(f"DCA_Step_{current_step+1}", self.id, pos['symbol'], price, indicators)
+
+class StrategyNetScalpDCA(BaseStrategy):
+    """
+    NetScalp_DCA: Operates on fixed Net Profit (0.05 EUR) with DCA Safety Orders.
+    Entry: RSI < 30 + 1m Bullish Confirmation.
+    """
+    def __init__(self, wallet):
+        super().__init__("NetScalp", wallet)
+        self.dca_enabled = True # Uses Safety Orders
+        
+        self.params.update({
+            'rsi_long_max': 30.0,
+            'dca_step_pct': 0.020, # 2.0%
+            'max_dca_count': 3,
+            'profit_activation_eur': 0.05,
+            'profit_initial_stop_eur': 0.04,
+            'profit_trailing_dist_eur': 0.01,
+            'time_limit_1': 3600, # 1 Hour
+            'time_limit_2': 7200  # 2 Hours
+        })
+        
+    def check_entry_logic(self, symbol, price, indicators):
+        # Only LONG logic specified in request (Dip Buying)
+        
+        # 1. Base Signal: RSI < 30
+        rsi = float(indicators.get('rsi', 50))
+        cond_rsi = rsi < self.params['rsi_long_max']
+        
+        # Alternative: Fib Deep Pullback? 
+        # Processor 'fib_level' is 0 (Low) to 1 (High). Deep pullback usually means Fib < 0.2?
+        # User said "Fib 0.618 or higher" which was ambiguous. Strict RSI is safer for now.
+        
+        if not cond_rsi: return
+        
+        # 2. Confirmation: 1m Candle Close > Prev High
+        # Calculated in Processor
+        is_conf = str(indicators.get('1m_conf_bullish', False)).lower() == 'true'
+        
+        if is_conf:
+             # Check Trend? User didn't specify trend filter, just "Anti-Trap".
+             # RSI < 30 is the trap condition. 1m Conf is the trigger.
+             
+             if self.on_event: self.on_event("Opportunity", self.id, symbol, price, indicators)
+             
+             c, r = self.wallet.can_open_new(symbol, 'LONG', {symbol: price})
+             if c:
+                 t_id = self.wallet.open_position(symbol, 'LONG', price)
+                 if t_id is not None:
+                     # Initial Target Calculation
+                     self.recalculate_target(t_id, price)
+                     if self.on_event: self.on_event("Open_NetScalp", self.id, symbol, price, indicators)
+
+    def manage_position(self, t_id, pos, price, indicators):
+        # 0. Time Based Exit (New)
+        if self.check_time_based_exit(t_id, pos, price, indicators):
+            return
+
+        # 1. Check Trailing Stop Exit
+        # Calculate current Net PnL
+        gross = self.wallet.calc_pnl_gross(t_id, price)
+        
+        # Est Fees
+        val_exit = pos['size'] * price
+        if pos['type'] == 'LONG': fee_rate = config.FEE_SPOT_TAKER
+        else: fee_rate = config.FEE_FUTURES_TAKER
+        
+        fees_total = pos.get('itemized_fees', 0.0) + (val_exit * fee_rate)
+        net_val = gross - fees_total
+        
+        # Activation
+        act_eur = self.params.get('profit_activation_eur', 0.05)
+        init_stop_eur = self.params.get('profit_initial_stop_eur', 0.04)
+        trail_dist_eur = self.params.get('profit_trailing_dist_eur', 0.03)
+
+        is_active = pos.get('ts_status') == "ACTIVE"
+        
+        if not is_active:
+            if net_val >= act_eur:
+                # Activate
+                pos['ts_status'] = "ACTIVE"
+                
+                # Set Initial Stop (Lock 0.04)
+                stop_price = self.get_price_for_net_pnl(t_id, init_stop_eur)
+                pos['ts_price'] = stop_price
+                
+                logging.info(f"[{self.id}] NetScalp Activated {pos['symbol']} @ {price:.4f} (Net: {net_val:.4f}). Stop set to {stop_price:.4f} (+{init_stop_eur} EUR)")
+                
+        else:
+            # Update Trailing Stop
+            # Desired Stop based on Trailing Distance
+            # If Net = 0.10, Trail = 0.03 -> Target Stop PnL = 0.07
+            target_stop_pnl = net_val - trail_dist_eur
+            
+            # Convert PnL to Price
+            new_stop_price = self.get_price_for_net_pnl(t_id, target_stop_pnl)
+            
+            # Logic: Stop can only move UP (for Long)
+            current_stop = pos.get('ts_price', 0)
+            
+            if pos['type'] == 'LONG':
+                if new_stop_price > current_stop:
+                    pos['ts_price'] = new_stop_price
+                
+                # Check Exit
+                if price <= pos['ts_price']:
+                    logging.info(f"[{self.id}] NetScalp TS Exit {pos['symbol']} @ {price:.4f} (TS: {pos['ts_price']:.4f})")
+                    if self.wallet.close_position(t_id, price):
+                         if self.on_event: self.on_event("Close_NetScalp", self.id, pos['symbol'], price, indicators)
+                    return
+            else:
+                 # SHORT logic (if ever used)
+                 # Stop must move DOWN
+                 if current_stop == 0 or new_stop_price < current_stop:
+                     pos['ts_price'] = new_stop_price
+                     
+                 if price >= pos['ts_price']:
+                      self.wallet.close_position(t_id, price)
+                      return
+
+        # 2. Check DCA (Safety Orders)
+        # Trigger: Drop 1.5% from Last Entry (or Avg?)
+        # User: "Caída: El mercado cae a 108,35€ (1.5% de caída). El agente compra otros 50€."
+        # This implies 1.5% drop from Previous Purchase Price.
+        
+        if pos['dca_count'] >= self.params['max_dca_count']:
+            return # Max Safety Orders reached
+            
+        last_entry = pos.get('last_dca_price', pos['entry_price'])
+        drop_pct = self.params.get('dca_step_pct', 0.015)
+        
+        dca_trigger = last_entry * (1.0 - drop_pct)
+        
+        if price <= dca_trigger:
+             logging.info(f"[{self.id}] DCA Safety Trigger {pos['symbol']} @ {price:.4f} (< {dca_trigger:.4f})")
+             # Execute DCA
+             if self.wallet.execute_dca(t_id, price):
+                 # Recalculate Target based on NEW Avg and Size
+                 self.recalculate_target(t_id, price)
+                 if self.on_event: self.on_event("DCA_Safety", self.id, pos['symbol'], price, indicators)
+
+    def recalculate_target(self, t_id, current_price):
+        """
+        Calculates exit price to achieve exactly 0.05 EUR Net Profit.
+        Target P = (Total_Invested + Entry_Fees_Paid + Target_Net) / (Size * (1 - Fee_Exit))
+        """
+        pos = self.wallet.positions.get(t_id)
+        if not pos: return
+        
+        total_size = pos['size']
+        total_margin = pos['margin'] 
+        fees_paid = pos.get('itemized_fees', 0.0) # Entry + DCA fees so far
+        target_net = self.params.get('profit_activation_eur', 0.05)
+        
+        fee_rate = config.FEE_SPOT_TAKER if pos['type'] == 'LONG' else config.FEE_FUTURES_TAKER
+        
+        # Formula:
+        # Exit_Val * (1 - Fee) - Cost_Basis = Net
+        # Cost_Basis = Margin + Fees_Paid (Wait. 'margin' is just pure coin value at entry? No.)
+        # Wallet: margin = size * avg_price in Spot (Leverage=1).
+        # Fees are paid externally from balance.
+        # So 'Cost Basis' to recover is `margin` + `fees_paid`.
+        # We need to end up with `margin` + `Net` + `fees_paid` returned to balance?
+        # Balance Delta = (ExitVal - ExitFee) - (Margin + FeesPaid).
+        # We want Balance Delta = +Net.
+        # (ExitVal * (1-Rate)) - Margin - FeesPaid = Net.
+        # ExitVal * (1-Rate) = Net + Margin + FeesPaid.
+        
+        numerator = target_net + total_margin + fees_paid
+        denominator = total_size * (1 - fee_rate)
+        
+        if denominator == 0: return
+        
+        target_price = numerator / denominator
+        
+        target_price = numerator / denominator
+        
+        # Just for visualization (Yellow line in GUI usually comes from ts_price)
+        # We set it to ACTIVATION price initially so user knows where it starts trailing
+        pos['ts_price'] = target_price 
+        # pos['ts_status'] = "TARGET" # Don't set TARGET status, keep WAIT until active
+        
+        logging.info(f"[{self.id}] New Actv. Target for #{t_id}: {target_price:.4f} (Avg: {pos['avg_price']:.4f})")
+
+    def get_price_for_net_pnl(self, t_id, target_net_eur):
+        """Calculates price required to achieve specific Net PnL (EUR)."""
+        pos = self.wallet.positions.get(t_id)
+        if not pos: return 0.0
+        
+        total_size = pos['size']
+        total_margin = pos['margin'] 
+        fees_paid = pos.get('itemized_fees', 0.0)
+        
+        fee_rate = config.FEE_SPOT_TAKER if pos['type'] == 'LONG' else config.FEE_FUTURES_TAKER
+        
+        numerator = target_net_eur + total_margin + fees_paid
+        denominator = total_size * (1 - fee_rate)
+        
+        if denominator == 0: return 0.0
+        return numerator / denominator
+
+
+
+
+class StrategyRollingDCAV2(BaseStrategy):
+    """
+    RollingDCA v2 ("Robust Recovery"):
+    - Filters: ADX>15, VRel>1.5, RSI(5m)<40.
+    - DCA: 10 EUR Base. Steps: -4% (15€), -8% (20€), -12% (30€).
+    - Exit: Trailing Stop (Act +1.5%, Dist 0.5%).
+    """
+    def __init__(self, wallet, allowed_sides=['LONG']):
+        super().__init__("RollingDCA_v2", wallet)
+        self.allowed_sides = allowed_sides
+        self.dca_enabled = True 
+        
+        # DCA Config (Fixed Value Mode)
+        # Note: 'val' is absolute EUR amount.
+        self.dca_steps = [
+            {'drop': -0.04, 'val': 15.0}, # Step 1: -4%
+            {'drop': -0.08, 'val': 20.0}, # Step 2: -8% (from Avg)
+            {'drop': -0.12, 'val': 30.0}  # Step 3: -12% (from Avg)
+        ]
+        
+        self.params.update({
+            'rsi_5m_entry': 40.0,
+            'adx_min': 15.0,
+            'vrel_min': 1.5,
+            
+            'base_size_eur': 10.0,
+            
+            'take_profit_net_pct': 1.0, # FIXED 1% NET
+            'max_concurrent': 3
+        })
+
+    def check_entry_logic(self, symbol, price, indicators):
+        # 1. RSI 5m Check
+        rsi_5m = float(indicators.get('rsi_5m', 50.0))
+        if rsi_5m >= self.params['rsi_5m_entry']: return
+        
+        # 2. Green Candle (1m)
+        candle_open = float(indicators.get('Open', -1))
+        if candle_open > 0 and price <= candle_open: return
+
+        # 3. Max Concurrent
+        active_count = 0
+        for p in self.wallet.positions.values():
+            if p.get('strategy') == self.id: active_count += 1
+        
+        if active_count >= self.params['max_concurrent']: return
+
+        # Entry
+        base_eur = self.params['base_size_eur']
+        c, r = self.wallet.can_open_new(symbol, 'LONG', {symbol: price})
+        if c:
+             qty = base_eur / price
+             if self.wallet.open_position(symbol, 'LONG', price, quantity=qty):
+                 if self.on_event: self.on_event("Open_DCA_V2", self.id, symbol, price, indicators)
+
+    def manage_position(self, t_id, pos, price, indicators):
+         # 1. Fixed Net Take Profit (1.0%)
+         pnl_net_pct = self.wallet.calc_pnl_pct_net(t_id, price)
+         
+         if pnl_net_pct >= self.params.get('take_profit_net_pct', 1.0):
+             logging.info(f"[{self.id}] TP Hit {pos['symbol']} @ {price} (Net: {pnl_net_pct:.2f}%)")
+             if self.wallet.close_position(t_id, price):
+                 if self.on_event: self.on_event("Close_TP_Net", self.id, pos['symbol'], price, indicators)
+             return
+
+         # 2. Check DCA Step (Fixed Value Recovery)
+         # Using PnL from Avg Price
+         avg_price = pos['avg_price']
+         pnl_pct = (price - avg_price) / avg_price
+         
+         current_step = pos.get('dca_step', 0)
+         if current_step >= len(self.dca_steps): return 
+         
+         next_cfg = self.dca_steps[current_step]
+         target_drop = next_cfg['drop'] # e.g. -0.04
+         
+         if pnl_pct <= target_drop:
+              # Execute DCA
+              buy_eur = next_cfg['val']
+              qty = buy_eur / price
+              
+              if self.wallet.add_to_position(t_id, price, qty):
+                  pos['dca_step'] = current_step + 1
+                  logging.info(f"[{self.id}] DCA V2 Step {current_step+1} Executed for {pos['symbol']} ({buy_eur}€)")
+                  if self.on_event: self.on_event(f"DCA_Step_{current_step+1}", self.id, pos['symbol'], price, indicators)
+
+class StrategyRollingDCAV3(BaseStrategy):
+    """
+    RollingDCA v3 ("Smart Scale-In"):
+    - Entry: Base 1€ + Steps 1€ (Max 15€).
+    - Conditions: ADX>15, VRel>1.5, RSI<40 (Checked for Initial AND DCA).
+    - DCA Trigger: Distance >= 1.5% from AvgPrice.
+    - Exit: Trailing Stop (Act +1.2% Net, Dist 0.3%).
+    """
+    def __init__(self, wallet):
+        super().__init__("RollingDCA_v3", wallet)
+        self.allowed_sides = ['LONG']
+        
+        self.params.update({
+            'base_size_eur': 1.0,
+            'dca_size_eur': 1.0,
+            'max_exposure_eur': 15.0,
+            'max_concurrent': 3,
+            
+            # Technicals
+            'rsi_long_max': 40.0,
+            'adx_min': 15.0,
+            'vrel_min': 1.5,
+            
+            # Smart DCA
+            'dca_min_distance_pct': 0.015, # 1.5%
+            
+            'take_profit_net_pct': 1.0, # FIXED 1% NET
+        })
+
+    def check_entry_logic(self, symbol, price, indicators):
+        # 1. Technical Filters (Mandatory for ALL entries)
+        rsi = float(indicators.get('rsi', 50))
+        if rsi >= self.params['rsi_long_max']: return
+        
+        adx = float(indicators.get('ADX_14', 0))
+        if adx <= self.params['adx_min']: return
+        
+        vrel = float(indicators.get('vrel', 0))
+        if vrel <= self.params['vrel_min']: return
+
+        # 2. Check Context (New vs DCA)
+        existing_pos = None
+        active_symbols_count = 0
+        for p in self.wallet.positions.values():
+            if p.get('strategy') == self.id:
+                # Count unique symbols logic? 
+                # Wallet positions are keyed by ID. We iterate all.
+                # Simplification: Just count positions. 
+                # Ideally we want unique symbol count, but since we merge into one pos per symbol here...
+                # effectively count is symbols.
+                 active_symbols_count += 1
+                 if p['symbol'] == symbol:
+                     existing_pos = p
+                     
+        if existing_pos:
+            # --- DCA Logic ---
+            # Check Max Exposure
+            if existing_pos['margin'] + self.params['dca_size_eur'] > self.params['max_exposure_eur']:
+                return # Exposure Limit Reached
+
+            # Check Price Distance
+            avg_price = existing_pos['avg_price']
+            dist_req = self.params['dca_min_distance_pct']
+            target_price = avg_price * (1 - dist_req)
+            
+            if price > target_price:
+                 logging.info(f"[{self.id}] Signal Ignored {symbol}: Price distance < {dist_req*100}%")
+                 return
+
+            # Execute DCA
+            qty = self.params['dca_size_eur'] / price
+            if self.wallet.add_to_position(existing_pos['id'], price, qty):
+                 if self.on_event: self.on_event("DCA_Step_Smart", self.id, symbol, price, indicators)
+        
+        else:
+            # --- New Entry Logic ---
+            if active_symbols_count >= self.params['max_concurrent']: return
+            
+            qty = self.params['base_size_eur'] / price
+            if self.wallet.open_position(symbol, 'LONG', price, quantity=qty):
+                if self.on_event: self.on_event("Open_RollingV3", self.id, symbol, price, indicators)
+
+    def manage_position(self, t_id, pos, price, indicators):
+         # 1. Fixed Net Take Profit (1.0%)
+         pnl_net_pct = self.wallet.calc_pnl_pct_net(t_id, price)
+         
+         if pnl_net_pct >= self.params.get('take_profit_net_pct', 1.0):
+             logging.info(f"[{self.id}] TP Hit {pos['symbol']} @ {price} (Net: {pnl_net_pct:.2f}%)")
+             if self.wallet.close_position(t_id, price):
+                 if self.on_event: self.on_event("Close_TP_Net", self.id, pos['symbol'], price, indicators)
+             return
+
+class StrategyRollingDCAShort(BaseStrategy):
+    """
+    Rol_dca_sh_v1: Short version of RollingDCA.
+    Entry: RSI > 60 + Red Candle (Price > Open).
+    DCA: Martingala on rises (+1.5%, +3%, +5%).
+    Exit: 1% Net Profit.
+    """
+    def __init__(self, wallet):
+        super().__init__("Rol_dca_sh_v1", wallet)
+        self.allowed_sides = ['SHORT']
+        self.dca_enabled = True 
+        
+        # DCA Config (Rise triggers)
+        self.dca_steps = [
+            {'rise': 0.015, 'mult': 1.5}, 
+            {'rise': 0.030, 'mult': 2.0}, 
+            {'rise': 0.050, 'mult': 3.0}
+        ]
+        
+        self.params.update({
+            'rsi_5m_short': 60.0,
+            'take_profit_net_pct': 1.0,
+            'max_concurrent': 3
+        })
+
+    def calc_safe_entry_size(self):
+        total_mult = 1.0 + sum(s['mult'] for s in self.dca_steps)
+        equity = self.wallet.balance_eur 
+        equity = max(equity, 500.0) 
+        safe_size = equity / (self.params['max_concurrent'] * total_mult)
+        return max(safe_size, 15.0)
+
+    def check_entry_logic(self, symbol, price, indicators):
+        # 1. Check Max Concurrent
+        active_count = 0
+        for p in self.wallet.positions.values():
+            if p.get('strategy') == self.id: active_count += 1
+        
+        if active_count >= self.params['max_concurrent']: return
+
+        # 2. RSI > 60
+        rsi_5m = float(indicators.get('rsi_5m', 50.0))
+        if rsi_5m <= self.params['rsi_5m_short']: return
+        
+        # 3. Red/pump Candle Check (Selling the rip)
+        # We want to sell when price is HIGH in the candle
+        candle_open = float(indicators.get('Open', -1))
+        if candle_open > 0 and price >= candle_open: # Above open
+             # Entry
+             size_eur = self.calc_safe_entry_size()
+             c, r = self.wallet.can_open_new(symbol, 'SHORT', {symbol: price})
+             if c:
+                 qty = size_eur / price
+                 if self.wallet.open_position(symbol, 'SHORT', price, quantity=qty):
+                     if self.on_event: self.on_event("Open_DCA_Short_Base", self.id, symbol, price, indicators)
+
+    def manage_position(self, t_id, pos, price, indicators):
+         # 1. Fixed Net Take Profit (1.0%)
+         pnl_net_pct = self.wallet.calc_pnl_pct_net(t_id, price)
+         if pnl_net_pct >= self.params.get('take_profit_net_pct', 1.0):
+             logging.info(f"[{self.id}] TP Hit {pos['symbol']} @ {price} (Net: {pnl_net_pct:.2f}%)")
+             if self.wallet.close_position(t_id, price):
+                 if self.on_event: self.on_event("Close_TP_Net", self.id, pos['symbol'], price, indicators)
+             return
+
+         # 2. Check DCA Step (Short)
+         # Drawdown = Price went UP
+         avg_price = pos['avg_price']
+         # PnL roughly: (Entry - Price) / Entry. 
+         # If Price > Entry, PnL is negative.
+         # We want to check if Price has Risen by X%.
+         rise_pct = (price - avg_price) / avg_price
+         
+         current_step = pos.get('dca_step', 0)
+         if current_step >= len(self.dca_steps): return 
+         
+         next_cfg = self.dca_steps[current_step]
+         target_rise = next_cfg['rise']
+         
+         if rise_pct >= target_rise:
+              # DCA Sell
+              base_eur = self.calc_safe_entry_size()
+              sell_eur = base_eur * next_cfg['mult']
+              qty = sell_eur / price
+              
+              if self.wallet.add_to_position(t_id, price, qty):
+                  pos['dca_step'] = current_step + 1
+                  logging.info(f"[{self.id}] DCA Short Step {current_step+1} Executed for {pos['symbol']}")
+                  if self.on_event: self.on_event(f"DCA_Step_{current_step+1}", self.id, pos['symbol'], price, indicators)
+
+
+class StrategyRollingDCAShortV2(BaseStrategy):
+    """
+    Rol_dca_sh_v2: Short version of V2.
+    Entry: RSI > 60.
+    DCA: Fixed Value (+4%, +8%, +12%).
+    Exit: 1% Net Profit.
+    """
+    def __init__(self, wallet):
+        super().__init__("Rol_dca_sh_v2", wallet)
+        self.allowed_sides = ['SHORT']
+        self.dca_enabled = True 
+        
+        self.dca_steps = [
+            {'rise': 0.04, 'val': 15.0}, 
+            {'rise': 0.08, 'val': 20.0}, 
+            {'rise': 0.12, 'val': 30.0}
+        ]
+        
+        self.params.update({
+            'rsi_5m_short': 60.0,
+            'base_size_eur': 10.0,
+            'take_profit_net_pct': 1.0,
+            'max_concurrent': 3
+        })
+
+    def check_entry_logic(self, symbol, price, indicators):
+        rsi_5m = float(indicators.get('rsi_5m', 50.0))
+        if rsi_5m <= self.params['rsi_5m_short']: return
+        
+        candle_open = float(indicators.get('Open', -1))
+        if candle_open > 0 and price >= candle_open:
+             base_eur = self.params['base_size_eur']
+             c, r = self.wallet.can_open_new(symbol, 'SHORT', {symbol: price})
+             if c:
+                 qty = base_eur / price
+                 if self.wallet.open_position(symbol, 'SHORT', price, quantity=qty):
+                     if self.on_event: self.on_event("Open_DCA_Short_V2", self.id, symbol, price, indicators)
+
+    def manage_position(self, t_id, pos, price, indicators):
+         pnl_net_pct = self.wallet.calc_pnl_pct_net(t_id, price)
+         if pnl_net_pct >= self.params.get('take_profit_net_pct', 1.0):
+             logging.info(f"[{self.id}] TP Hit {pos['symbol']} @ {price} (Net: {pnl_net_pct:.2f}%)")
+             if self.wallet.close_position(t_id, price):
+                 if self.on_event: self.on_event("Close_TP_Net", self.id, pos['symbol'], price, indicators)
+             return
+
+         avg_price = pos['avg_price']
+         rise_pct = (price - avg_price) / avg_price
+         
+         current_step = pos.get('dca_step', 0)
+         if current_step >= len(self.dca_steps): return 
+         
+         next_cfg = self.dca_steps[current_step]
+         target_rise = next_cfg['rise']
+         
+         if rise_pct >= target_rise:
+              sell_eur = next_cfg['val']
+              qty = sell_eur / price
+              if self.wallet.add_to_position(t_id, price, qty):
+                  pos['dca_step'] = current_step + 1
+                  if self.on_event: self.on_event(f"DCA_Step_{current_step+1}", self.id, pos['symbol'], price, indicators)
+
+
+class StrategyRollingDCAShortV3(BaseStrategy):
+    """
+    Rol_dca_sh_v3: Short Smart Scale-In.
+    Entries: RSI > 60 + ADX > 15 + VRel > 1.5.
+    DCA: Smart Distance (Price > Avg + 1.5%).
+    Exit: 1% Net Profit.
+    """
+    def __init__(self, wallet):
+        super().__init__("Rol_dca_sh_v3", wallet)
+        self.allowed_sides = ['SHORT']
+        
+        self.params.update({
+            'base_size_eur': 1.0,
+            'dca_size_eur': 1.0,
+            'max_exposure_eur': 15.0,
+            'max_concurrent': 3,
+            
+            'rsi_short_min': 60.0,
+            'adx_min': 15.0,
+            'vrel_min': 1.5,
+            'dca_min_distance_pct': 0.015, # 1.5%
+            'take_profit_net_pct': 1.0,
+        })
+
+    def check_entry_logic(self, symbol, price, indicators):
+        rsi = float(indicators.get('rsi', 50))
+        if rsi <= self.params['rsi_short_min']: return
+        
+        adx = float(indicators.get('ADX_14', 0))
+        if adx <= self.params['adx_min']: return
+        
+        vrel = float(indicators.get('vrel', 0))
+        if vrel <= self.params['vrel_min']: return
+
+        existing_pos = None
+        active_symbols_count = 0
+        for p in self.wallet.positions.values():
+            if p.get('strategy') == self.id:
+                 active_symbols_count += 1
+                 if p['symbol'] == symbol:
+                     existing_pos = p
+                     
+        if existing_pos:
+            # Check Max Exposure
+            if existing_pos['margin'] + self.params['dca_size_eur'] > self.params['max_exposure_eur']:
+                return 
+
+            # Smart Distance (Short: Price must be HIGHER than Avg)
+            avg_price = existing_pos['avg_price']
+            dist_req = self.params['dca_min_distance_pct']
+            target_price = avg_price * (1 + dist_req)
+            
+            if price < target_price:
+                 logging.info(f"[{self.id}] Signal Ignored {symbol}: Price distance < {dist_req*100}%")
+                 return
+
+            qty = self.params['dca_size_eur'] / price
+            if self.wallet.add_to_position(existing_pos['id'], price, qty):
+                 if self.on_event: self.on_event("DCA_Short_Step_Smart", self.id, symbol, price, indicators)
+        
+        else:
+            if active_symbols_count >= self.params['max_concurrent']: return
+            
+            qty = self.params['base_size_eur'] / price
+            # Sell the Rip logic (Price >= Open) for initial too?
+            candle_open = float(indicators.get('Open', -1))
+            if candle_open > 0 and price >= candle_open:
+                if self.wallet.open_position(symbol, 'SHORT', price, quantity=qty):
+                    if self.on_event: self.on_event("Open_RolShortV3", self.id, symbol, price, indicators)
+
+    def manage_position(self, t_id, pos, price, indicators):
+         # 1. Fixed Net Take Profit (1.0%)
+         pnl_net_pct = self.wallet.calc_pnl_pct_net(t_id, price)
+         if pnl_net_pct >= self.params.get('take_profit_net_pct', 1.0):
+             logging.info(f"[{self.id}] TP Hit {pos['symbol']} @ {price} (Net: {pnl_net_pct:.2f}%)")
+             if self.wallet.close_position(t_id, price):
+                 if self.on_event: self.on_event("Close_TP_Net", self.id, pos['symbol'], price, indicators)
+             return
+
+class StrategyTrendADX(BaseStrategy):
+    """
+    TrendADX: Strict Trend Following with Risk Management.
+    Long: Trend_Bullish + Trend1h Bullish + ADX>25 + Price > EMA200.
+    Short: Trend_Bearish + Trend1h Bearish + ADX>25 + Price < EMA200.
+    Risk: SL 1.5%, TP 3.0%. Fixed Size 50€.
+    Noise Filter: BBWidth low block (unless VRel > 1.2).
+    """
+    def __init__(self, wallet):
+        super().__init__("TrendADX", wallet)
+        self.allowed_sides = ['LONG', 'SHORT']
+        self.dca_enabled = False 
+        
+        self.params.update({
+            'adx_min': 25.0,
+            'bb_width_min': 0.005, # 0.5% Width as noise threshold? Adjust as needed.
+            'vrel_noise_override': 1.2,
+            
+            'sl_pct': 0.015,
+            'tp_pct': 0.030,
+            'fixed_size_eur': 50.0
+        })
+
+    def check_entry_logic(self, symbol, price, indicators):
+        # 1. Inputs
+        decision = indicators.get('Decision_Log', 'Monitoring')
+        trend_1h = indicators.get('Current_Trend_1h', 'Neutral')
+        adx = float(indicators.get('ADX_14', 0))
+        dist_ema200 = float(indicators.get('Dist_EMA200_Pct', 0))
+        bb_width = float(indicators.get('Bollinger_Width', 100)) # Default high to not block if missing
+        vrel = float(indicators.get('vrel', 0))
+
+        # 2. Noise Filter
+        # If width is extremely low (Lateralization), block unless High Volume
+        if bb_width < self.params['bb_width_min'] and vrel <= self.params['vrel_noise_override']:
+             return # Noise / Flat Market
+
+        # 3. LONG Logic
+        if decision == 'Trend_Bullish' and trend_1h == 'Bullish':
+             if adx > self.params['adx_min'] and dist_ema200 > 0:
+                 # Entry Long
+                 self.execute_entry(symbol, 'LONG', price, indicators)
+                 return
+
+        # 4. SHORT Logic
+        if decision == 'Trend_Bearish' and trend_1h == 'Bearish':
+             if adx > self.params['adx_min'] and dist_ema200 < 0:
+                 # Entry Short
+                 self.execute_entry(symbol, 'SHORT', price, indicators)
+
+class StrategyFallingKnife(BaseStrategy):
+    """
+    Estrategia 'Cuchillo_caida' (Momentum Short).
+    Diseñada para entrar en SHORT durante desplomes fuertes (Crashes).
+    Ignora sobreventa (RSI bajo) y entra por rotura de volatilidad.
+    """
+    def __init__(self, wallet):
+        super().__init__("Cuchillo_caida", wallet)
+        self.params = {
+            'base_size_eur': 50.0,
+            'adx_min': 30.0,        # Requiere tendencia fuerte
+            'bb_breakout': True,    # Entrar si rompe BB Low
+            'sl_pct': 0.02,         # Stop Loss 2%
+            'tp_pct': 0.06,         # Take Profit 6% (Busca caídas grandes)
+            'trailing_start_pct': 0.02, # Activar Trailing tras 2% beneficio
+            'trailing_dist_pct': 0.01   # Seguir precio a 1% distancia
+        }
+
+    def check_entry_logic(self, symbol, price, indicators):
+        # 1. Filtro de Tendencia Bajista
+        decision = indicators.get('Decision_Log', 'Neutral')
+        if decision != 'Trend_Bearish': return # Solo operar si estamos bajo EMA50
+        
+        # 2. Fuerza de la Caída (ADX)
+        adx = float(indicators.get('ADX_14', 0))
+        if adx < self.params['adx_min']: return # Si ADX es bajo, no es un crash, es un rango
+        
+        # 3. Rotura de Soporte (Bollinger Low)
+        bb_low = float(indicators.get('Bollinger_Low', 0))
+        if bb_low == 0: return
+        
+        # Lógica: Si el precio ACTUAL está por debajo de la banda inferior (o muy cerca)
+        # Significa que está "empujando" la banda hacia abajo con fuerza.
+        dist_to_bb_low = (price - bb_low) / bb_low
+        
+        # Entramos si el precio Rompe (es menor) o está en el 0.1% del borde
+        is_breakout = price < bb_low * 1.001 
+        
+        if is_breakout:
+            # Check Active Positions
+            active_count = sum(1 for p in self.wallet.positions.values() if p['symbol'] == symbol)
+            if active_count > 0: return
+            
+            self.execute_entry(symbol, 'SHORT', price, indicators)
+
+    def execute_entry(self, symbol, type, price, indicators):
+        qty = self.params['base_size_eur'] / price
+        if self.wallet.open_position(symbol, type, price, quantity=qty):
+            if self.on_event: self.on_event("Open_Knife_Short", self.id, symbol, price, indicators)
+
+    def manage_position(self, pos, current_price, indicators):
+        # Gestión Tipo 'Runner': Busca Home Runs en caídas libres
+        entry_price = pos['entry_price']
+        
+        # SHORT PnL: (Entry - Current) / Entry
+        pnl_pct = (entry_price - current_price) / entry_price
+        
+        # 1. Hard Stop Loss
+        if pnl_pct < -self.params['sl_pct']:
+            self.wallet.close_position(pos['id'], current_price, "SL_Knife")
+            return
+
+        # 2. Hard Take Profit (Panic Exit if huge profit instant)
+        if pnl_pct > self.params['tp_pct']:
+            self.wallet.close_position(pos['id'], current_price, "TP_Knife_Crash")
+            return
+
+        # 3. Trailing Stop Logic (Simulada)
+        # Si ganamos > 2%, subimos el stop para asegurar 1%
+        # Usamos 'highest_pnl' (para shorts sería max drawdown del price, pero pnl calculation handles it)
+        # PnL positivo es bueno.
+        
+        # Guardar high water mark del PnL estria ideal, pero usamos precio.
+        # En Short: 'lowest_price' es el mejor precio visto.
+        lowest_seen = pos.get('lowest_price', entry_price)
+        
+        # Trailing Activation Price (Entry * (1 - Start)) -> Precio más bajo que entrada
+        activation_price = entry_price * (1 - self.params['trailing_start_pct'])
+        
+        if lowest_seen < activation_price:
+            # Trailing Activo
+            # Stop Price = Lowest_Seen * (1 + Dist) -> Si rebota un 1% desde el fondo
+            stop_price = lowest_seen * (1 + self.params['trailing_dist_pct'])
+            
+            if current_price > stop_price:
+                self.wallet.close_position(pos['id'], current_price, "Trailing_Knife")
+
+    def execute_entry(self, symbol, side, price, indicators):
+        # Max 1 Position per Symbol for this strat? Yes, assume so.
+        for p in self.wallet.positions.values():
+            if p['symbol'] == symbol and p['strategy'] == self.id: return
+
+        size = self.params['fixed_size_eur']
+        qty = size / price
+        
+        if self.wallet.open_position(symbol, side, price, quantity=qty):
+             if self.on_event: self.on_event(f"Open_TrendADX_{side}", self.id, symbol, price, indicators)
+
+    def manage_position(self, t_id, pos, price, indicators):
+        # 1. Check Signal Exit (Trend Reversal or Loss of Momentum)
+        # Requirement: "Close immediately if Decision_Log changes or becomes Monitoring"
+        decision = indicators.get('Decision_Log', 'Monitoring')
+        
+        should_close_signal = False
+        if pos['type'] == 'LONG':
+             if decision != 'Trend_Bullish': should_close_signal = True
+        else:
+             if decision != 'Trend_Bearish': should_close_signal = True
+             
+        if should_close_signal:
+             logging.info(f"[{self.id}] Signal Change ({decision}). Closing {pos['symbol']}.")
+             if self.wallet.close_position(t_id, price):
+                 if self.on_event: self.on_event("Close_Signal_Change", self.id, pos['symbol'], price, indicators)
+             return
+
+        # 2. Hard SL/TP
+        pnl_pct = self.wallet.calc_pnl_pct_gross(t_id, price) # Gross for TP/SL trigger usually? Or Net? User said "3% of entry price".
+        # 1.5% of price movement is what matters. 
+        # PnL Gross Pct reflects price movement percentage exactly (for 1x leverage).
+        
+        # SL is negative PnL (-0.015)
+        sl_target = -self.params['sl_pct'] 
+        # TP is positive PnL (+0.030)
+        tp_target = self.params['tp_pct']  
+        
+        if pnl_pct <= sl_target:
+             logging.info(f"[{self.id}] SL Hit {pos['symbol']} ({pnl_pct:.2f}%)")
+             self.wallet.close_position(t_id, price)
+             return
+             
+        if pnl_pct >= tp_target:
+             logging.info(f"[{self.id}] TP Hit {pos['symbol']} ({pnl_pct:.2f}%)")
+             self.wallet.close_position(t_id, price)
+             return

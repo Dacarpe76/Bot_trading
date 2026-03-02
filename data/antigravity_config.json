@@ -1,0 +1,33 @@
+{
+    "strategy_name": "Antigravity",
+    "initial_balance": 400.0,
+    "max_slots": 10,
+    "entry": {
+        "rsi_max": 32,
+        "vrel_min": 1.5,
+        "bo_eur": 10.0
+    },
+    "exit": {
+        "min_net_pct": 0.35,
+        "tp_pct": 0.80,
+        "ts_activation_pct": 0.50,
+        "ts_callback_pct": 0.15
+    },
+    "defense": {
+        "dca_levels": 25,
+        "dca_step_pct": 2.0,
+        "dca_amount_eur": 1.60,
+        "sl_emergency_pct": 15.0,
+        "recovery_ts_activation": 0.30,
+        "recovery_ts_callback": 0.10
+    },
+    "priority_assets": [
+        "SOL",
+        "BTC",
+        "ETH",
+        "XRP",
+        "ADA",
+        "DOT",
+        "AVAX"
+    ]
+}

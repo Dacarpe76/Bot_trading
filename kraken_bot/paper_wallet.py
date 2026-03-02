@@ -8,8 +8,9 @@ from kraken_bot import config
 STATE_FILE = "wallet_state.json"
 
 class PaperWallet:
-    def __init__(self, strategy_id="S1", initial_balance=config.INITIAL_BALANCE, capital_limit_pct=config.CAPITAL_LIMIT_PCT):
+    def __init__(self, strategy_id="S1", initial_balance=config.INITIAL_BALANCE, capital_limit_pct=config.CAPITAL_LIMIT_PCT, display_name=None):
         self.strategy_id = strategy_id
+        self.display_name = display_name if display_name else strategy_id
         self.state_file = f"wallet_state_{strategy_id}.json"
         
         self.initial_capital = initial_balance # Store immutable start capital
@@ -97,23 +98,25 @@ class PaperWallet:
         # Allow calculation for short periods, but handle extreme short duration
         if duration_days < 0.001: return 0.0 
         
-        # Compound Interest Formula
-        # (End / Start) ^ (365 / days) - 1
+    def get_annualized_roi(self):
+        total_pnl = sum([t['final_pnl'] for t in self.trades_history])
+        
+        duration = time.time() - self.start_time
+        duration_days = duration / (24 * 3600)
+        if duration_days < 0.01: duration_days = 0.01 
         
         current_equity = self.initial_capital + total_pnl
         growth_factor = current_equity / self.initial_capital
         
-        if growth_factor <= 0: return -100.0 # Bust
+        if growth_factor <= 0: return -100.0 
         
         try:
-            # Cap the exponent to avoid overflow on very fresh wallets with a lucky win
             exponent = 365.0 / duration_days
             if exponent > 10000: exponent = 10000
             
             annual_growth_factor = growth_factor ** exponent
             apy = (annual_growth_factor - 1.0) * 100.0
             
-            # Sanity Cap for display (e.g. > 10,000% is meaningless noise)
             if apy > 1000000.0: apy = 1000000.0
             if apy < -100.0: apy = -100.0
             
@@ -121,6 +124,21 @@ class PaperWallet:
             apy = 0.0
             
         return apy
+
+    def get_daily_roi(self):
+        """Returns the average ROI per day."""
+        apy = self.get_annualized_roi()
+        return apy / 365.0
+
+    def get_avg_trade_duration(self):
+        """Returns the average duration of closed trades in minutes."""
+        if not self.trades_history: return 0.0
+        durations = []
+        for t in self.trades_history:
+            if 'close_time' in t and 'entry_time' in t:
+                durations.append(t['close_time'] - t['entry_time'])
+        if not durations: return 0.0
+        return (sum(durations) / len(durations)) / 60.0 
 
     def get_portfolio_value(self, current_prices):
         """
@@ -158,7 +176,7 @@ class PaperWallet:
         margin, equity, usage = self.get_capital_usage(current_prices)
         
         if self.capital_limit_pct is not None and usage >= self.capital_limit_pct:
-             logging.warning(f"Block Open {symbol} ({self.strategy_id}): Cap Usage {usage*100:.1f}% >= {self.capital_limit_pct*100:.0f}%")
+             logging.info(f"Block Open {symbol} ({self.strategy_id}): Cap Usage {usage*100:.1f}% >= {self.capital_limit_pct*100:.0f}%")
              return False, "Capital Limit Reached"
              
         # 2. Hedge Limit: Max 1 Long + 1 Short per Symbol
@@ -169,7 +187,7 @@ class PaperWallet:
                 count += 1
                 
         if count >= 1:
-            logging.warning(f"Block Open {symbol} ({self.strategy_id}): Already have {side}")
+            logging.info(f"Block Open {symbol} ({self.strategy_id}): Already have {side}")
             return False, f"Already have {side}"
             
         return True, "OK"
@@ -209,23 +227,23 @@ class PaperWallet:
         
         return size, entry_cost, leverage
 
-    def open_position(self, symbol, side, price, quantity=0.0):
+    def open_position(self, symbol, side, price, quantity=0.0, leverage=1.0):
         can_open, reason = self.can_open_new(symbol, side)
         if not can_open:
             return None
 
         if quantity > 0:
             size = quantity
-            margin_cost = size * price # 1x Leverage assumed for manual sizing
-            leverage = 1.0
+            position_value = size * price
+            margin_cost = position_value / leverage
         else:
             size, margin_cost, leverage = self.calculate_entry_size(price)
             
         if size == 0:
-            logging.warning(f"Insufficient funds to open {symbol}")
+            logging.info(f"Insufficient funds to open {symbol}")
             return None
         if self.balance_eur < margin_cost:
-             logging.warning(f"Open Fail: Insufficient Balance {self.balance_eur:.2f} < {margin_cost:.2f}")
+             logging.info(f"Open Fail: Insufficient Balance {self.balance_eur:.2f} < {margin_cost:.2f}")
              return False
              
         self.balance_eur -= margin_cost
@@ -257,26 +275,27 @@ class PaperWallet:
         self.next_trade_id += 1
         self.positions[t_id] = pos
         
-        logging.info(f">>> OPEN #{t_id} {symbol} {side} @ {price:.5f} | Size {size:.5f} | Margin {margin_cost:.2f}")
+        logging.info(f">>> OPEN #{t_id} {symbol} {side} @ {price:.5f} | Size {size:.5f} | Margin {margin_cost:.2f} | Lev {leverage}x")
         self.save_state()
         return t_id
 
     def add_to_position(self, trade_id, price, quantity=0.0):
         if trade_id not in self.positions: return False
         pos = self.positions[trade_id]
+        leverage = pos.get('leverage', 1.0)
         
         # Calculate Cost for this Add
         if quantity > 0:
              size = quantity
-             margin_cost = size * price # 1x Leverage assumed
+             position_value = size * price
+             margin_cost = position_value / leverage
         else:
-             # Default behavior (Double Down? or Fixed Amount?)
-             # Let's say fixed 50 EUR for legacy
+             # Default behavior
              margin_cost = 50.0
-             size = margin_cost / price
+             size = (margin_cost * leverage) / price
         
         if self.balance_eur < margin_cost:
-             logging.warning(f"No funds for DCA #{trade_id} (Need {margin_cost:.2f})")
+             logging.info(f"No funds for DCA #{trade_id} (Need {margin_cost:.2f})")
              return False
 
         self.balance_eur -= margin_cost
@@ -298,6 +317,10 @@ class PaperWallet:
         pos['avg_price'] = new_avg
         pos['dca_count'] = pos.get('dca_count', 0) + 1
         pos['last_dca_price'] = price
+        
+        # Reset Peaks for Trailing Stops
+        pos['highest_price'] = price
+        pos['lowest_price'] = price
         
         logging.info(f">>> DCA #{trade_id} {pos['symbol']} | Added {size:.5f} @ {price:.5f} | New Avg: {new_avg:.5f}")
         self.save_state()
@@ -469,7 +492,7 @@ class PaperWallet:
             icon = "✅" if net_pnl >= 0 else "❌"
             
             msg = (
-                f"{icon} <b>TRADE CLOSED: {pos['symbol']}</b>\n"
+                f"[WEB] {icon} <b>TRADE CLOSED ({self.display_name}): {pos['symbol']}</b>\n"
                 f"Type: {pos['type']}\n"
                 f"Entry: {pos['avg_price']:.4f}\n"
                 f"Exit: {close_price:.4f}\n"
@@ -500,7 +523,8 @@ class PaperWallet:
              if price > 0:
                  self.close_position(t_id, price)
              else:
-                 logging.warning(f"Could not close #{t_id} {pos['symbol']}: No price data")
+                 logging.info(f"Could not close #{t_id} {pos['symbol']}: No price data")
+                 continue
         self.save_state()
 
     def update_max_stats(self, trade_id, price):
@@ -599,6 +623,7 @@ class PaperWallet:
                 'id': t_id,
                 'symbol': sym,
                 'type': pos['type'],
+                'size': pos['size'],
                 'dca': pos['dca_count'],
                 'avg': pos['avg_price'],
                 'margin': pos['margin'],

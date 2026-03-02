@@ -1,0 +1,41 @@
+{
+    "strategy_name": "Saint-Grial",
+    "initial_balance": 500.0,
+    "max_slots": 10,
+    "capital_division": 20,
+    "reserve_pct": 0.50,
+    "regimes": {
+        "HALCON": {
+            "adx_min": 25,
+            "rsi_max": 45,
+            "min_profit_pct": 0.80,
+            "ts_activation": 1.0,
+            "ts_callback": 0.25
+        },
+        "ASPIRADORA": {
+            "adx_max": 20,
+            "rsi_max": 30,
+            "tp_fixed": 0.75
+        },
+        "BUNKER": {
+            "vrel_min": 2.0,
+            "rsi_capitulation": 20,
+            "dca_levels": 25,
+            "dca_step": 2.0,
+            "dca_amount_base": 1.60,
+            "emergency_exit_breakeven_plus": 0.30
+        }
+    },
+    "priority_assets": [
+        "SOL",
+        "BTC",
+        "ETH",
+        "XRP",
+        "ADA",
+        "DOT",
+        "AVAX",
+        "LINK",
+        "LTC",
+        "SHIB"
+    ]
+}

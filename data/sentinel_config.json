@@ -1,0 +1,39 @@
+{
+    "strategy_name": "Kraken Sentinel Turbo",
+    "initial_balance": 500.0,
+    "liquidity_reserve_pct": 0.10,
+    "layers": {
+        "Layer1": {
+            "name": "NetScalp Pro Turbo",
+            "weight": 0.60,
+            "leverage": 2.0,
+            "bo_pct": 0.015,
+            "so_pct": 0.015,
+            "max_dca": 12,
+            "dca_mult": 1.05,
+            "tp_trigger_eur": 0.25,
+            "tp_dist_eur": 0.08
+        },
+        "Layer2": {
+            "name": "HybridElite Turbo",
+            "weight": 0.20,
+            "leverage": 3.0,
+            "bo_pct": 0.05,
+            "tp_trigger_eur": 1.00,
+            "tp_dist_eur": 0.25,
+            "min_vol_24h": 500000000
+        },
+        "Layer3": {
+            "name": "Aspiradora PRO Turbo",
+            "weight": 0.20,
+            "leverage": 10.0,
+            "bo_pct": 0.10,
+            "tp_pct_price": 1.5,
+            "sl_pct_price": 1.0
+        }
+    },
+    "kill_switch_hours": 5,
+    "kill_switch_tp_eur": 0.01,
+    "btc_panic_drop_pct": 2.0,
+    "btc_panic_window_min": 15
+}

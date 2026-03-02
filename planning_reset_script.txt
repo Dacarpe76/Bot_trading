@@ -1,0 +1,12 @@
+1. Identify all wallet_state_*.json files in the active directory and/or backup_datos.
+2. For each file, parse the JSON.
+3. Archive the current JSON into a separate folder (e.g., `backup_datos/weekly_resets/YYYY_MM_DD/`).
+4. Iterate over `positions`:
+    - If a position is currently in POSITIVE PnL (or just close to 0), simulate a "close" to get realized PnL. (Actually, since this is a clean wipe, we might just use the Kraken/Market current price to calculate final_pnl, then move them to `trades_history`).
+    - If a position is in NEGATIVE PnL, move it to a special "unclosed_study_trades.csv" or a specific JSON array for later analysis.
+5. Wipe the `positions` dictionary to `{}`.
+6. Wipe the `trades_history` list to `[]`.
+7. Wipe the `initial_capital` to `500.0`.
+8. Wipe the `balance_eur` to `500.0`.
+9. Wipe the `last_update` timestamp.
+10. Save the fresh state back to `wallet_state_*.json`.

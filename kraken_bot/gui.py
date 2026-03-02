@@ -99,24 +99,10 @@ class WorkerThread(QThread):
             self.log_signal.emit(err_msg)
 
     async def run_reporter_loop(self):
-        """Checks every minute if a new hour has started."""
+        """Periodic background tasks in the GUI."""
         while self.running:
             now = datetime.datetime.now()
-            if now.hour != self.last_hour_check:
-                # New Hour!
-                self.last_hour_check = now.hour
-                self.log_signal.emit("Sending Hourly Telegram Report...")
-                
-                try:
-                    report_text = self.reporter.generate_report(self.strategy.strategies)
-                    # Run in executor to avoid blocking loop? requests is sync.
-                    # Since it takes ~100ms, strictly speaking yes, but for simplicity:
-                    await self.loop.run_in_executor(None, self.reporter.send_message, report_text)
-                except Exception as e:
-                    self.log_signal.emit(f"Report Failed: {e}")
             
-                except Exception as e:
-                    self.log_signal.emit(f"Report Failed: {e}")
             
             # --- Periodic Macro Status Update (e.g. every 10s) ---
             if now.second % 10 == 0:

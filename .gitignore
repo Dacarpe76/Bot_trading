@@ -18,3 +18,7 @@ dist/
 *.spec
 .env
 estrategias.html
+
+# Ignore node modules and large tarballs
+node_modules/
+*.tar.gz

@@ -6,11 +6,14 @@ import datetime
 import requests
 import ta
 import time
+import math
 from kraken_bot import config
+# from kraken_bot import sunday_data_fetch   # Legacy if any
 
 from kraken_bot.paper_wallet import PaperWallet
 from kraken_bot import strategies
 from kraken_bot import scheduler_strategies
+from kraken_bot.reporter import TelegramReporter
 
 class StrategyProcessor:
     def __init__(self):
@@ -24,82 +27,160 @@ class StrategyProcessor:
         self.five_cubes_sim = scheduler_strategies.FiveCubesSimStrategy()
         self.news_strategy = scheduler_strategies.KrakenNewsStrategy()
         self.last_scheduler_date = None # Track last run DATE
+        
+        self.reporter = TelegramReporter()
+        self.last_summary_date = None
+        self.last_tech_summary_date = None
 
         
         # --- Aggressive Variants ---
         # 1. Aggressive (Mixed)
-        w3 = PaperWallet("Aggressive", initial_balance=500.0, capital_limit_pct=config.CAPITAL_LIMIT_AGGRESSIVE)
-        self.strategies['Aggressive'] = strategies.StrategyAggressive(w3, allowed_sides=['LONG', 'SHORT'])
+        w1 = PaperWallet("Aggressive", initial_balance=500.0, capital_limit_pct=config.CAPITAL_LIMIT_AGGRESSIVE, display_name="Aggressive Sniper")
+        self.strategies['Aggressive'] = strategies.StrategyAggressive(w1, allowed_sides=['LONG', 'SHORT'])
         self.strategies['Aggressive'].on_event = self.handle_strategy_event
 
-        
-        # --- AggrCent Variants ---
-        # 4. AggrCent (Mixed)
-        w4 = PaperWallet("AggrCent", initial_balance=500.0, capital_limit_pct=config.CAPITAL_LIMIT_AGGRESSIVE)
-        self.strategies['AggrCent'] = strategies.StrategyAggressiveCent(w4, allowed_sides=['LONG', 'SHORT'])
+        # 2. Aggressive Cent
+        w2 = PaperWallet("AggrCent", initial_balance=500.0, capital_limit_pct=config.CAPITAL_LIMIT_PCT, display_name="Aggressive Cent")
+        self.strategies['AggrCent'] = strategies.StrategyAggressiveCent(w2)
         self.strategies['AggrCent'].on_event = self.handle_strategy_event
 
         
+
+        
         # 5. NetScalp (Fixed Net + Safety)
-        w5 = PaperWallet("NetScalp", initial_balance=500.0, capital_limit_pct=config.CAPITAL_LIMIT_PCT)
+        w5 = PaperWallet("NetScalp", initial_balance=500.0, capital_limit_pct=config.CAPITAL_LIMIT_PCT, display_name="NetScalp DCA")
         self.strategies['NetScalp'] = strategies.StrategyNetScalpDCA(w5)
         self.strategies['NetScalp'].on_event = self.handle_strategy_event
 
+        # 6. RollingDCA V3
+        w6 = PaperWallet("RollingDCA_v3", initial_balance=500.0, capital_limit_pct=None, display_name="Rolling DCA v3")
+        self.strategies['RollingDCA_v3'] = strategies.StrategyRollingDCAV3(w6)
+        self.strategies['RollingDCA_v3'].on_event = self.handle_strategy_event
+
         
         # 8. HybridElite (Best of Both Worlds) - New 500 EUR Wallet
-        w8 = PaperWallet("HybridElite", initial_balance=500.0, capital_limit_pct=None)
+        w8 = PaperWallet("HybridElite", initial_balance=500.0, capital_limit_pct=None, display_name="Hybrid Elite")
         self.strategies['HybridElite'] = strategies.StrategyHybridElite(w8)
         self.strategies['HybridElite'].on_event = self.handle_strategy_event
         
-        # 9. RollingDCA (Peace of Mind) - 500 EUR
-        w9 = PaperWallet("RollingDCA", initial_balance=500.0, capital_limit_pct=None)
+        w9 = PaperWallet("RollingDCA", initial_balance=500.0, capital_limit_pct=None, display_name="Rolling DCA")
         self.strategies['RollingDCA'] = strategies.StrategyRollingDCA(w9)
         self.strategies['RollingDCA'].on_event = self.handle_strategy_event
         
 
+
         # 11. RollingDCA v2 (Robust Recovery) - 500 EUR
-        w11 = PaperWallet("RollingDCA_v2", initial_balance=500.0, capital_limit_pct=None)
+        w11 = PaperWallet("RollingDCA_v2", initial_balance=500.0, capital_limit_pct=None, display_name="Rolling DCA v2")
         self.strategies['RollingDCA_v2'] = strategies.StrategyRollingDCAV2(w11)
         self.strategies['RollingDCA_v2'].on_event = self.handle_strategy_event
 
-        # 12. RollingDCA v3 (Smart Scale-In) - 500 EUR
-        w12 = PaperWallet("RollingDCA_v3", initial_balance=500.0, capital_limit_pct=None)
-        self.strategies['RollingDCA_v3'] = strategies.StrategyRollingDCAV3(w12)
-        self.strategies['RollingDCA_v3'].on_event = self.handle_strategy_event
 
-        # 13. RollingDCA Short v1 - 500 EUR
-        w13 = PaperWallet("Rol_dca_sh_v1", initial_balance=500.0, capital_limit_pct=None)
+        # 13. RollingDCA Short v1 - 500 EUR 
+        w13 = PaperWallet("Rol_dca_sh_v1", initial_balance=500.0, capital_limit_pct=None, display_name="Rolling DCA Short")
         self.strategies['Rol_dca_sh_v1'] = strategies.StrategyRollingDCAShort(w13)
         self.strategies['Rol_dca_sh_v1'].on_event = self.handle_strategy_event
 
-        # 14. RollingDCA Short v2 - 500 EUR
-        w14 = PaperWallet("Rol_dca_sh_v2", initial_balance=500.0, capital_limit_pct=None)
+        # 14. RollingDCA Short v2
+        w14 = PaperWallet("Rol_dca_sh_v2", initial_balance=500.0, capital_limit_pct=None, display_name="Rolling DCA Short v2")
         self.strategies['Rol_dca_sh_v2'] = strategies.StrategyRollingDCAShortV2(w14)
         self.strategies['Rol_dca_sh_v2'].on_event = self.handle_strategy_event
 
-        # 15. RollingDCA Short v3 - 500 EUR
-        w15 = PaperWallet("Rol_dca_sh_v3", initial_balance=500.0, capital_limit_pct=None)
+        # 15. RollingDCA Short v3
+        w15 = PaperWallet("Rol_dca_sh_v3", initial_balance=500.0, capital_limit_pct=None, display_name="Rolling DCA Short v3")
         self.strategies['Rol_dca_sh_v3'] = strategies.StrategyRollingDCAShortV3(w15)
         self.strategies['Rol_dca_sh_v3'].on_event = self.handle_strategy_event
+
+
         
-        # 16. TrendADX (Trend Following Risk Managed) - 500 EUR
-        w16 = PaperWallet("TrendADX", initial_balance=500.0, capital_limit_pct=None)
-        self.strategies['TrendADX'] = strategies.StrategyTrendADX(w16)
-        self.strategies['TrendADX'].on_event = self.handle_strategy_event
+        # 16. Aspiradora (Sniper Extreme) - 500 EUR 
+        w16 = PaperWallet("Aspiradora", initial_balance=500.0, capital_limit_pct=None)
+        self.strategies['Aspiradora'] = strategies.StrategyAspiradora(w16)
+        self.strategies['Aspiradora'].on_event = self.handle_strategy_event
+
+        # 17. Hormiga / Grinder (High Frequency) - 500 EUR
+        w17 = PaperWallet("Hormiga", initial_balance=500.0, capital_limit_pct=None)
+        self.strategies['Hormiga'] = strategies.StrategyHormiga(w17)
+        self.strategies['Hormiga'].on_event = self.handle_strategy_event
+
+        # 18. NetScalp Rolling (Fixed Profit + Granular DCA) - 500 EUR
+        w18 = PaperWallet("NetScalp_Rolling", initial_balance=500.0, capital_limit_pct=config.CAPITAL_LIMIT_PCT)
+        self.strategies['NetScalp_Rolling'] = strategies.StrategyNetScalpRolling(w18)
+        self.strategies['NetScalp_Rolling'].on_event = self.handle_strategy_event
+
+        # 19. RollingDCA Evolution (Anti-Trap) - 500 EUR 
+        w19 = PaperWallet("RollingDCA_Evolution", initial_balance=500.0, capital_limit_pct=None, display_name="Rolling DCA Evolution")
+        self.strategies['RollingDCA_Evolution'] = strategies.StrategyRollingDCAEvolution(w19)
+        self.strategies['RollingDCA_Evolution'].on_event = self.handle_strategy_event
+
+        w20 = PaperWallet("RollingDCA_Inmortal", initial_balance=500.0, capital_limit_pct=None, display_name="Rolling DCA Inmortal")
+        self.strategies['RollingDCA_Inmortal'] = strategies.StrategyRollingDCAInmortal(w20)
+        self.strategies['RollingDCA_Inmortal'].on_event = self.handle_strategy_event
+
+        # --- Re-enabled Legacy Bots for History/Operations Visibility ---
+        w21_old = PaperWallet("KrakenEvent", initial_balance=500.0, capital_limit_pct=None, display_name="Kraken Sentinel 2026")
+        self.strategies['KrakenEvent'] = strategies.StrategyKrakenEvent(w21_old)
+        self.strategies['KrakenEvent'].on_event = self.handle_strategy_event
+
+        w22_old = PaperWallet("SentinelTurbo", initial_balance=500.0, capital_limit_pct=None, display_name="Kraken Sentinel Turbo")
+        self.strategies['SentinelTurbo'] = strategies.StrategySentinelTurbo(w22_old)
+        self.strategies['SentinelTurbo'].on_event = self.handle_strategy_event
+
+        # 23. Antigravity (Sniper & 25-level DCA Defense) - 500 EUR
+        w23 = PaperWallet("Antigravity", initial_balance=500.0, capital_limit_pct=None, display_name="Antigravity Sniper")
+        self.strategies['Antigravity'] = strategies.StrategyAntigravity(w23)
+        self.strategies['Antigravity'].on_event = self.handle_strategy_event
         
-        # 17. Cuchillo_caida (Momentum Short Crash) - 500 EUR
-        w17 = PaperWallet("Cuchillo_caida", initial_balance=500.0, capital_limit_pct=None)
-        self.strategies['Cuchillo_caida'] = strategies.StrategyFallingKnife(w17)
-        self.strategies['Cuchillo_caida'].on_event = self.handle_strategy_event
+        # 24. Saint-Grial (Master Adaptive Mode) - 500 EUR
+        w24 = PaperWallet("SaintGrial", initial_balance=500.0, capital_limit_pct=None, display_name="Saint-Grial Master")
+        self.strategies['SaintGrial'] = strategies.StrategySaintGrial(w24)
+        self.strategies['SaintGrial'].on_event = self.handle_strategy_event
+
+        # 25. Saint-Grial PRO X3 (Unified Execution Protocol) - 500 EUR
+        w25 = PaperWallet("SaintGrialProX3", initial_balance=500.0, capital_limit_pct=None, display_name="Saint-Grial PRO X3")
+        self.strategies['SaintGrialProX3'] = strategies.StrategySaintGrialProX3(w25)
+        self.strategies['SaintGrialProX3'].on_event = self.handle_strategy_event
+        
+        # 26. VectorFlujo_V1 (Macro sniper & 15m EMA200 Defense) - 500 EUR
+        w26 = PaperWallet("VectorFlujo_V1", initial_balance=500.0, capital_limit_pct=None, display_name="Vector Flujo V1")
+        self.strategies['VectorFlujo_V1'] = strategies.StrategyVectorFlujoV1(w26)
+        self.strategies['VectorFlujo_V1'].on_event = self.handle_strategy_event
+        
+        # Inyectar referencia al procesador para que VectorFlujo pueda pedir status de otros
+        self.strategies['VectorFlujo_V1'].processor = self
+
+        # --- Short-Only Scalping Variations to reach 25 ---
+        
+        # 22. Aggressive Short
+        w22 = PaperWallet("Aggressive_Short", initial_balance=500.0, capital_limit_pct=config.CAPITAL_LIMIT_AGGRESSIVE)
+        self.strategies['Aggressive_Short'] = strategies.StrategyAggressive(w22, allowed_sides=['SHORT'])
+        self.strategies['Aggressive_Short'].on_event = self.handle_strategy_event
+
+        # 23. AggrCent Short
+        w23_s = PaperWallet("AggrCent_Short", initial_balance=500.0, capital_limit_pct=config.CAPITAL_LIMIT_PCT)
+        self.strategies['AggrCent_Short'] = strategies.StrategyAggressiveCent(w23_s, allowed_sides=['SHORT'])
+        self.strategies['AggrCent_Short'].on_event = self.handle_strategy_event
+
+        # 24. Aspiradora Short
+        w24_s = PaperWallet("Aspiradora_Short", initial_balance=500.0, capital_limit_pct=None)
+        self.strategies['Aspiradora_Short'] = strategies.StrategyAspiradora(w24_s, allowed_sides=['SHORT'])
+        self.strategies['Aspiradora_Short'].on_event = self.handle_strategy_event
+
+        # 25. Hormiga Short
+        w25_s = PaperWallet("Hormiga_Short", initial_balance=500.0, capital_limit_pct=None)
+        self.strategies['Hormiga_Short'] = strategies.StrategyHormiga(w25_s, allowed_sides=['SHORT'])
+        self.strategies['Hormiga_Short'].on_event = self.handle_strategy_event
         
         # Multi-Coin State: { 'XBT/EUR': { 'candles': [], 'current_candle': None, 'cvd': 0.0, 'cols': ... } }
         self.market_state = {}
+        self.btc_history = [] # To track price for crash detection
         for sym in config.SYMBOLS:
             self.market_state[sym] = {
                 'candles': [],
                 'candles_5m': [], # New 5m storage
+                'candles_15m': [], # New 15m storage
                 'current_candle': None,
                 'current_candle_5m': None, # New
+                'current_candle_15m': None, # New
                 'cvd': 0.0,
                 'indicators': {} # Store last calc indicators
             }
@@ -115,6 +196,52 @@ class StrategyProcessor:
         self.last_monitor_update = 0 # Throttle Control
         self.global_trend = "NEUTRAL"
         logging.info("StrategyProcessor: Initialization Complete (History fetch pending).")
+
+    def reload_strategies(self):
+        """Scans for new wallet_state_*.json files and registers them if not already active."""
+        import glob
+        import os
+        
+        logging.info("StrategyProcessor: Scanning for new strategies...")
+        state_files = glob.glob("wallet_state_*.json")
+        new_count = 0
+        
+        for file_path in state_files:
+            # Extract strategy ID from filename: wallet_state_{ID}.json
+            strat_id = file_path.replace("wallet_state_", "").replace(".json", "")
+            
+            if strat_id in self.strategies or strat_id == "" or strat_id == "legacy":
+                continue
+                
+            try:
+                logging.info(f"StrategyProcessor: Detected new wallet file: {file_path}. Registering {strat_id}...")
+                
+                # Create PaperWallet - it will auto-load the state from the file
+                w = PaperWallet(strat_id, initial_balance=500.0, capital_limit_pct=None)
+                
+                # Determine which strategy class to use based on id or default to a safe one
+                # If it's a known legacy bot name, use the corresponding class
+                if strat_id == "KrakenEvent":
+                    self.strategies[strat_id] = strategies.StrategyKrakenEvent(w)
+                elif strat_id == "SentinelTurbo":
+                    self.strategies[strat_id] = strategies.StrategySentinelTurbo(w)
+                elif strat_id == "SaintGrial":
+                    self.strategies[strat_id] = strategies.StrategySaintGrial(w)
+                elif "RollingDCA" in strat_id:
+                    self.strategies[strat_id] = strategies.StrategyRollingDCAV2(w)
+                else:
+                    # Generic strategy to at least visualize positions/history
+                    # StrategyAspiradora is relatively safe as it has strict entry conditions
+                    self.strategies[strat_id] = strategies.StrategyAspiradora(w)
+                
+                self.strategies[strat_id].on_event = self.handle_strategy_event
+                new_count += 1
+                logging.info(f"StrategyProcessor: Successfully registered new strategy: {strat_id}")
+                
+            except Exception as e:
+                logging.error(f"StrategyProcessor: Failed to register {strat_id}: {e}")
+                
+        return new_count
 
     def fetch_all_history(self):
         """Fetches history for all configured symbols."""
@@ -170,7 +297,7 @@ class StrategyProcessor:
                     return # Success
                     
             except Exception as e:
-                logging.warning(f"Failed history fetch {symbol} (Attempt {attempt+1}): {e}")
+                logging.info(f"Failed history fetch {symbol} (Attempt {attempt+1}): {e}")
                 time.sleep(2 * (attempt + 1)) # Backoff
         
         logging.error(f"Given up fetching history for {symbol} after {max_retries} attempts.")
@@ -182,7 +309,7 @@ class StrategyProcessor:
         # Initial Scheduler Check (Run on startup if needed, or wait for next 00:00)
         # User said "evaluada cada 24 horas". Let's run checks in loop.
         self.scheduler_interval = 60 # Check every minute
-        self.last_scheduler_check = 0
+        self.last_scheduler_check = time.time() # Delay first check
         
         while True:
             # --- Scheduler Check ---
@@ -250,36 +377,72 @@ class StrategyProcessor:
             c['volume'] += volume
             c['trades'] += 1
             
+            # Update Larger Timeframes
+            self.update_5m_candle(symbol, c)
+            self.update_15m_candle(symbol, c)
+            
             # Real-time Checks (Multi-Strategy)
             # 1. Update Global Trend (BTC Watcher)
             if symbol == 'XBT/EUR':
+                # Persistent history for 15m crash detection
+                self.btc_history.append({'time': timestamp, 'price': price})
+                # Clean old history (keep > 15m)
+                self.btc_history = [h for h in self.btc_history if timestamp - h['time'] <= 960] # 16m buffer
+                
+                # Detect 15m crash (> 2%)
+                if self.btc_history:
+                    oldest_btc = self.btc_history[0]
+                    if (price - oldest_btc['price']) / oldest_btc['price'] <= -0.02:
+                        if self.global_trend != "BTC_CRASH":
+                             logging.warning(f"StrategyProcessor: BTC CRASH DETECTED! (>2% drop in 15m). Suspending Layer 1 & 2 opens.")
+                             self.global_trend = "BTC_CRASH"
+                    elif self.global_trend == "BTC_CRASH" and (price - oldest_btc['price']) / oldest_btc['price'] > -0.015:
+                             # Slight recovery to exit crash mode
+                             self.global_trend = "NEUTRAL"
+
                 c_open = c.get('open', price)
                 if c_open > 0:
                     pct_change = (price - c_open) / c_open
                     if pct_change < -0.0025: # -0.25% in 1 minute
-                        self.global_trend = "DUMP"
-                    elif pct_change > 0.001: # Recovery
-                        self.global_trend = "NEUTRAL"
+                        if self.global_trend != "BTC_CRASH": self.global_trend = "DUMP"
+                    elif pct_change > 0.001: # Recovery or Bullish move
+                        if self.global_trend not in ["BTC_CRASH", "DUMP"]:
+                            self.global_trend = "BULLISH"
+                        else:
+                            self.global_trend = "NEUTRAL"
                     else:
-                        # Keep previous state unless recovery (?) 
-                        # Or reset to Neutral if not dumping? 
-                        # Let's say if NOT < -0.0025, we act Neutral? 
-                        # No, "Dump" mode should stick for a bit or until slight recovery.
-                        # Simple logic: If not actively dumping, Neutral. 
-                        # But that toggles too fast.
-                        # Let's stick: DUMP if < -0.25%. NEUTRAL if > -0.10%.
-                        if pct_change > -0.0010:
-                             self.global_trend = "NEUTRAL"
+                        if self.global_trend not in ["DUMP", "BTC_CRASH", "BULLISH"]:
+                            if pct_change > -0.0010:
+                                 self.global_trend = "NEUTRAL"
 
             # 2. Inject Trend into Indicators
             current_indicators = state['indicators'].copy() # Copy to avoid polluting persistent state
             current_indicators['market_trend'] = self.global_trend
+            current_indicators['btc_15m_crash'] = (self.global_trend == "BTC_CRASH")
             
-            # Inject 5m Data if available
+            # Inject 5m Data and Global Minimum RSI
+            all_rsis = {}
+            for s, st in self.market_state.items():
+                r = st.get('indicators_5m', {}).get('rsi', 100) # Default to 100 if no data
+                all_rsis[s] = r
+            
+            min_rsi_val = min(all_rsis.values()) if all_rsis else 100
+            
             if 'indicators_5m' in state:
                 ind_5 = state['indicators_5m']
                 current_indicators['rsi_5m'] = ind_5.get('rsi', 50.0)
                 current_indicators['close_5m'] = ind_5.get('close', 0.0)
+                current_indicators['timestamp_5m'] = ind_5.get('timestamp')
+            
+            if 'indicators_15m' in state:
+                ind_15 = state['indicators_15m']
+                current_indicators['ema200_15m'] = ind_15.get('ema200', 0.0)
+                current_indicators['adx_15m'] = ind_15.get('adx', 0.0)
+                current_indicators['close_15m'] = ind_15.get('close', 0.0)
+            
+            # Identify if this symbol is the global minimum RSI
+            current_indicators['is_global_min_rsi'] = (current_indicators.get('rsi_5m', 100) <= min_rsi_val)
+            current_indicators['global_min_rsi'] = min_rsi_val
             
             for strat in self.strategies.values():
                 strat.on_tick(symbol, price, current_indicators)
@@ -335,6 +498,28 @@ class StrategyProcessor:
                 self.last_monitor_update = now
         except Exception as e:
             logging.error(f"Trade Parse Error {symbol}: {e}")
+
+    def get_strategies_summary(self):
+        """Returns a snapshot of performance for specific strategies."""
+        summary = {}
+        for s_id in ['Hormiga', 'KrakenEvent', 'SentinelTurbo']:
+            if s_id in self.strategies:
+                s = self.strategies[s_id]
+                w = s.wallet
+                pnl = w.balance_eur - 500.0 # Assuming 500 initial
+                # Add unrealized using live prices
+                for tid, pos in w.positions.items():
+                    symbol = pos['symbol']
+                    price = 0.0
+                    if symbol in self.market_state:
+                         st = self.market_state[symbol]
+                         if st['current_candle']: price = st['current_candle']['close']
+                         elif st['candles']: price = st['candles'][-1]['close']
+                    if price > 0:
+                        pnl += w.calc_pnl_gross(tid, price)
+                
+                summary[s_id] = f"{pnl:+.2f}€"
+        return summary
 
     def handle_strategy_event(self, event_type, strat_id, symbol, price, indicators):
         """Called by strategies when a trade event occurs."""
@@ -691,7 +876,69 @@ class StrategyProcessor:
              self.analyze_market(symbol, df_5m)
         
         if self.on_candle_closed:
-             self.on_candle_closed(symbol, candle)
+             self.on_candle_closed(symbol, candle_1m)
+
+    def update_15m_candle(self, symbol, candle_1m):
+        state = self.market_state[symbol]
+        c15 = state['current_candle_15m']
+        
+        # Init if None
+        if c15 is None:
+             base_time = candle_1m['timestamp'].replace(minute=(candle_1m['timestamp'].minute // 15) * 15)
+             c15 = {
+                 'timestamp': base_time,
+                 'symbol': symbol,
+                 'open': candle_1m['open'], 
+                 'high': candle_1m['high'], 
+                 'low': candle_1m['low'], 
+                 'close': candle_1m['close'],
+                 'volume': candle_1m['volume'], 
+                 'trades': candle_1m['trades']
+             }
+             state['current_candle_15m'] = c15
+        else:
+             if (candle_1m['timestamp'] - c15['timestamp']).total_seconds() >= 900:
+                  state['current_candle_15m'] = None
+                  self.update_15m_candle(symbol, candle_1m)
+                  return
+
+             c15['high'] = max(c15['high'], candle_1m['high'])
+             c15['low'] = min(c15['low'], candle_1m['low'])
+             c15['close'] = candle_1m['close']
+             c15['volume'] += candle_1m['volume']
+             c15['trades'] += candle_1m['trades']
+        
+        ts = candle_1m['timestamp']
+        if (ts.minute + 1) % 15 == 0:
+             state['candles_15m'].append(c15)
+             if len(state['candles_15m']) > 100: state['candles_15m'].pop(0)
+             
+             state['current_candle_15m'] = None
+             
+             # Analyze 15m
+             df_15m = pd.DataFrame(state['candles_15m'])
+             logging.info(f"ANALYSIS 15m {symbol}: Closed {c15['timestamp'].strftime('%H:%M')} | Close: {c15['close']}")
+             
+             # Calculate 15m Indicators
+             try:
+                 df_15m['close'] = pd.to_numeric(df_15m['close'])
+                 df_15m['high'] = pd.to_numeric(df_15m['high'])
+                 df_15m['low'] = pd.to_numeric(df_15m['low'])
+                 
+                 if len(df_15m) > 14:
+                     # EMA 200
+                     ema200_15m = ta.trend.EMAIndicator(close=df_15m['close'], window=200 if len(df_15m) >= 200 else len(df_15m)).ema_indicator().iloc[-1]
+                     # ADX 14
+                     adx_15m = ta.trend.ADXIndicator(high=df_15m['high'], low=df_15m['low'], close=df_15m['close'], window=14).adx().iloc[-1]
+                     
+                     if 'indicators_15m' not in state: state['indicators_15m'] = {}
+                     state['indicators_15m']['ema200'] = ema200_15m
+                     state['indicators_15m']['adx'] = adx_15m
+                     state['indicators_15m']['close'] = c15['close']
+                     
+                     logging.info(f"15m Analysis {symbol}: EMA200={ema200_15m:.2f}, ADX={adx_15m:.2f}")
+             except Exception as e:
+                 logging.error(f"15m Calc Error {symbol}: {e}")
 
     def analyze_market(self, symbol, df):
         if len(df) < 20: return
@@ -702,7 +949,7 @@ class StrategyProcessor:
             rsi_indicator = ta.momentum.RSIIndicator(close=df['close'], window=14)
             df['rsi'] = rsi_indicator.rsi()
         except Exception as e:
-            logging.warning(f"RSI Calc Error {symbol}: {e}")
+            logging.info(f"RSI Calc Error {symbol}: {e}") # Changed from logging.warning to logging.info
             df['rsi'] = 50.0
 
         # 2. Volume Moving Average
@@ -1323,23 +1570,54 @@ class StrategyProcessor:
         now = datetime.datetime.now()
         today = now.date()
         
-        # Check if we should run (At 00:xx OR First Run of the session if not run today?)
-        # Logic: If never run (None) -> Run Now? Or User wants strictly 00:00?
-        # User complained "it's not operating". Usually implies they want immediate action on start.
+        # 1. Daily Strategy Run (00:00)
         if self.last_scheduler_date is None or (now.hour == 0 and self.last_scheduler_date != today):
-                logging.info("Executing Daily Scheduled Tasks...")
+                logging.info("Executing Daily Scheduled Tasks (00:00)...")
+                try:
+                    self.macro_strategy.run()
+                except Exception as e:
+                    logging.error(f"Error in Macro Strategy: {e}")
                 
-                # 1. Kraken Macro (Real)
-                self.macro_strategy.run()
+                try:
+                    self.five_cubes_sim.run()
+                except Exception as e:
+                    logging.error(f"Error in Five Cubes Sim: {e}")
                 
-                # 2. Five Cubes (Sim)
-                self.five_cubes_sim.run()
+                try:
+                    self.news_strategy.run()
+                except Exception as e:
+                    logging.error(f"Error in News Strategy: {e}")
                 
-                # 3. News Strategy (Sim)
-                self.news_strategy.run()
-                
+                # 4. Kraken Event Daily Recalculation (Compound Interest)
+                # 4. Antigravity Daily Log (Optional)
+                if 'Antigravity' in self.strategies:
+                    logging.info("StrategyProcessor: Antigravity Strategy is active.")
+
                 self.last_scheduler_date = today
-                logging.info("Daily Tasks Completed.")
+                logging.info("Daily Strategy Run Completed.")
+
+        # 2. Daily Telegram Summary (08:00)
+        # We check if it's 8:00 and we haven't sent it today.
+        if now.hour == 8 and self.last_summary_date != today:
+            logging.info("Sending Daily Telegram Summary (08:00)...")
+            try:
+                summary_text = self.reporter.generate_daily_summary(self.strategies)
+                self.reporter.send_message(summary_text)
+                self.last_summary_date = today
+                logging.info("Daily Summary Sent.")
+            except Exception as e:
+                logging.error(f"Failed to send Daily Summary: {e}")
+
+        # 3. Daily Technical Summary (12:00)
+        if now.hour == 12 and self.last_tech_summary_date != today:
+            logging.info("Sending Daily Technical Summary (12:00)...")
+            try:
+                summary_text = self.reporter.generate_technical_summary(self.strategies)
+                self.reporter.send_message(summary_text)
+                self.last_tech_summary_date = today
+                logging.info("Daily Technical Summary Sent.")
+            except Exception as e:
+                logging.error(f"Failed to send Technical Summary: {e}")
 
     def get_aggregated_strategies_status(self):
         """Combines Macro/Sim strategies + Paper Wallets."""

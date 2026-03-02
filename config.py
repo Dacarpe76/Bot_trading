@@ -37,7 +37,7 @@ FEE_FUTURES_MAKER = 0.0002
 
 # SYSTEM
 TIMEFRAME = 1 # 1 minute
-SYMBOLS = ['XBT/EUR', 'ETH/EUR', 'SOL/EUR', 'PAXG/EUR', 'USDT/EUR'] # Add/Remove as needed
+SYMBOLS = ['SOL/EUR', 'XBT/EUR', 'ETH/EUR', 'XRP/EUR', 'ADA/EUR', 'DOT/EUR', 'AVAX/EUR'] # Priority Assets
 KRAKEN_REST_URL = "https://api.kraken.com/0/public"
 MAX_ENTRY_PCT = 0.10 # 10% of equity per trade
 MAX_ENTRY_AMT = 1000.0 # Unlimited relative to 500 balance, rely on PCT

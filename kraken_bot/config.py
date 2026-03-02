@@ -9,16 +9,15 @@ KRAKEN_REST_URL = 'https://api.kraken.com/0/public'
 # Top 10 Pairs (Kraken format usually XBT/EUR, ETH/EUR... check availability)
 # Using standard ISO codes where possible.
 SYMBOLS = [
-    'XBT/EUR', 'ETH/EUR', 'SOL/EUR', 'BNB/EUR', 'XRP/EUR', 
-    'ADA/EUR', 'AVAX/EUR', 'DOGE/EUR', 'DOT/EUR', 'LINK/EUR'
+    'XBT/EUR', 'ETH/EUR', 'SOL/EUR', 'AVAX/EUR', 'ADA/EUR', 
+    'DOT/EUR', 'XRP/EUR', 'LINK/EUR', 'MATIC/EUR', 'BNB/EUR', 'DOGE/EUR'
 ]
 TIMEFRAME = 1          # 1 Minute candles
 
 # --- PAPER TRADING & MEXC SIMULATION ---
 INITIAL_BALANCE = 500.0  # EUR
-# MEXC Costs Simulation
-# Spot (Longs): 0.1% Taker. DCA uses Maker (0.0%).
-FEE_SPOT_TAKER = 0.001
+# Spot (Longs): 0.05% Taker. DCA uses Maker (0.0%).
+FEE_SPOT_TAKER = 0.0005
 FEE_SPOT_MAKER = 0.000 
 # Futures (Shorts): 0.02% Taker. DCA uses Maker (0.0%).
 FEE_FUTURES_TAKER = 0.0002
@@ -61,3 +60,8 @@ BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET") # Note: Bot_trading uses differ
 # --- METRICS ---
 # Official Project Start: 19/01/2026 10:04:10
 PROJECT_START_TIMESTAMP = 1768813450
+
+# --- AUTHENTICATION ---
+# Stable secret for JWT cookies
+WEB_SECRET_KEY = os.getenv("WEB_SECRET_KEY", "bot_agresivo_ultra_secret_2026")
+ADMIN_PASSWORD = "D4n13lo7o81976"

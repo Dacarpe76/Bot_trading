@@ -33,21 +33,22 @@ class KrakenConnector:
                 await asyncio.sleep(5)
 
     async def subscribe(self):
-        # Kraken Subscription Format
-        # Symbols must be a list of strings
+        # Kraken Subscription Format: DOGE must be XDG
+        sub_symbols = [s.replace('DOGE/EUR', 'XDG/EUR') for s in self.symbols]
         payload = {
             "event": "subscribe",
-            "pair": self.symbols,
+            "pair": sub_symbols,
             "subscription": {
                 "name": "trade"
             }
         }
         await self.ws.send(json.dumps(payload))
-        logging.info(f"Sent Subscribe for {len(self.symbols)} pairs: {self.symbols}")
+        logging.info(f"KrakenConnector: Sent Subscribe for {len(sub_symbols)} pairs: {sub_symbols}")
 
     async def listen(self):
         async for message in self.ws:
             try:
+                # logging.info(f"KrakenConnector: Raw message received") # Too verbose
                 data = json.loads(message)
                 
                 # Filter Heartbeats/SystemStatus/Subscriptions

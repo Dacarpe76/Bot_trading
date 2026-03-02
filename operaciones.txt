@@ -1,0 +1,1936 @@
+Bot_inversor, [1/3/26 0:41]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): DOT/EUR
+Type: LONG
+Entry: 1.3928
+Exit: 1.4077
+------------------
+Net PnL: +0.10 EUR
+Fees: 0.01 EUR
+Balance: 353.56 EUR
+
+Bot_inversor, [1/3/26 0:51]
+[WEB] ✅ TRADE CLOSED (Hormiga): ETH/EUR
+Type: LONG
+Entry: 1659.0600
+Exit: 1665.4800
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 452.18 EUR
+
+Bot_inversor, [1/3/26 0:52]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): ETH/EUR
+Type: LONG
+Entry: 1661.4100
+Exit: 1665.2500
+------------------
+Net PnL: +0.05 EUR
+Fees: 0.03 EUR
+Balance: 275.69 EUR
+
+Bot_inversor, [1/3/26 0:58]
+[WEB] ✅ TRADE CLOSED (Hormiga): DOT/EUR
+Type: SHORT
+Entry: 1.4179
+Exit: 1.4117
+------------------
+Net PnL: +0.04 EUR
+Fees: 0.00 EUR
+Balance: 452.22 EUR
+
+Bot_inversor, [1/3/26 1:24]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): DOT/EUR
+Type: LONG
+Entry: 1.3955
+Exit: 1.4086
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 343.64 EUR
+
+Bot_inversor, [1/3/26 1:24]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): DOT/EUR
+Type: LONG
+Entry: 1.3955
+Exit: 1.4086
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 334.45 EUR
+
+Bot_inversor, [1/3/26 1:24]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): DOT/EUR
+Type: LONG
+Entry: 1.3955
+Exit: 1.4077
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 417.43 EUR
+
+Bot_inversor, [1/3/26 1:24]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): DOT/EUR
+Type: LONG
+Entry: 1.4020
+Exit: 1.4045
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.03 EUR
+Balance: 275.72 EUR
+
+Bot_inversor, [1/3/26 2:05]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): BNB/EUR
+Type: LONG
+Entry: 522.7800
+Exit: 523.7000
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.03 EUR
+Balance: 241.26 EUR
+
+Bot_inversor, [1/3/26 2:20]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): ETH/EUR
+Type: SHORT
+Entry: 1663.3100
+Exit: 1651.8400
+------------------
+Net PnL: +0.14 EUR
+Fees: 0.01 EUR
+Balance: 192.01 EUR
+
+Bot_inversor, [1/3/26 2:28]
+[WEB] ✅ TRADE CLOSED (Hormiga): ETH/EUR
+Type: LONG
+Entry: 1651.6800
+Exit: 1655.7100
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.01 EUR
+Balance: 432.22 EUR
+
+Bot_inversor, [1/3/26 2:30]
+[WEB] ✅ TRADE CLOSED (Hormiga): DOT/EUR
+Type: LONG
+Entry: 1.3719
+Exit: 1.3750
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.01 EUR
+Balance: 442.24 EUR
+
+Bot_inversor, [1/3/26 2:32]
+[WEB] ✅ TRADE CLOSED (Hormiga): ADA/EUR
+Type: LONG
+Entry: 0.2355
+Exit: 0.2364
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 452.27 EUR
+
+Bot_inversor, [1/3/26 2:32]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): ADA/EUR
+Type: LONG
+Entry: 0.2355
+Exit: 0.2364
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 381.04 EUR
+
+Bot_inversor, [1/3/26 2:37]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): AVAX/EUR
+Type: LONG
+Entry: 7.6900
+Exit: 7.7600
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 304.52 EUR
+
+Bot_inversor, [1/3/26 2:38]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): ADA/EUR
+Type: LONG
+Entry: 0.2355
+Exit: 0.2384
+------------------
+Net PnL: +0.11 EUR
+Fees: 0.01 EUR
+Balance: 314.64 EUR
+
+Bot_inversor, [1/3/26 2:39]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): ETH/EUR
+Type: LONG
+Entry: 1662.2500
+Exit: 1669.4500
+------------------
+Net PnL: +0.11 EUR
+Fees: 0.03 EUR
+Balance: 241.03 EUR
+
+Bot_inversor, [1/3/26 2:39]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): ETH/EUR
+Type: LONG
+Entry: 1663.2300
+Exit: 1669.4500
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 381.06 EUR
+
+Bot_inversor, [1/3/26 2:39]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): SOL/EUR
+Type: LONG
+Entry: 71.6600
+Exit: 72.3400
+------------------
+Net PnL: +0.22 EUR
+Fees: 0.03 EUR
+Balance: 177.92 EUR
+
+Bot_inversor, [1/3/26 2:39]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): SOL/EUR
+Type: LONG
+Entry: 71.4900
+Exit: 72.3400
+------------------
+Net PnL: +0.11 EUR
+Fees: 0.01 EUR
+Balance: 333.34 EUR
+
+Bot_inversor, [1/3/26 2:39]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): ETH/EUR
+Type: LONG
+Entry: 1662.8100
+Exit: 1668.3300
+------------------
+Net PnL: +0.05 EUR
+Fees: 0.02 EUR
+Balance: 213.39 EUR
+
+Bot_inversor, [1/3/26 2:40]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): SOL/EUR
+Type: LONG
+Entry: 71.4900
+Exit: 72.2700
+------------------
+Net PnL: +0.10 EUR
+Fees: 0.01 EUR
+Balance: 391.17 EUR
+
+Bot_inversor, [1/3/26 2:44]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): AVAX/EUR
+Type: LONG
+Entry: 7.6900
+Exit: 7.7800
+------------------
+Net PnL: +0.11 EUR
+Fees: 0.01 EUR
+Balance: 401.28 EUR
+
+Bot_inversor, [1/3/26 2:44]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): SOL/EUR
+Type: LONG
+Entry: 71.6600
+Exit: 72.2600
+------------------
+Net PnL: +0.25 EUR
+Fees: 0.03 EUR
+Balance: 241.26 EUR
+
+Bot_inversor, [1/3/26 2:45]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): BNB/EUR
+Type: LONG
+Entry: 522.7000
+Exit: 524.9200
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 411.32 EUR
+
+Bot_inversor, [1/3/26 2:45]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): BNB/EUR
+Type: LONG
+Entry: 521.4000
+Exit: 524.8100
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.01 EUR
+Balance: 324.70 EUR
+
+Bot_inversor, [1/3/26 2:49]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): ETH/EUR
+Type: LONG
+Entry: 1666.7200
+Exit: 1678.0300
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.01 EUR
+Balance: 334.76 EUR
+
+Bot_inversor, [1/3/26 2:50]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): ETH/EUR
+Type: LONG
+Entry: 1666.8399
+Exit: 1681.3700
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 343.53 EUR
+
+Bot_inversor, [1/3/26 2:50]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): DOT/EUR
+Type: LONG
+Entry: 1.3813
+Exit: 1.3968
+------------------
+Net PnL: +0.10 EUR
+Fees: 0.01 EUR
+Balance: 344.87 EUR
+
+Bot_inversor, [1/3/26 2:50]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): LINK/EUR
+Type: LONG
+Entry: 7.4509
+Exit: 7.5797
+------------------
+Net PnL: +0.16 EUR
+Fees: 0.01 EUR
+Balance: 353.69 EUR
+
+Bot_inversor, [1/3/26 2:50]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): AVAX/EUR
+Type: LONG
+Entry: 7.7592
+Exit: 7.8500
+------------------
+Net PnL: +0.11 EUR
+Fees: 0.01 EUR
+Balance: 353.90 EUR
+
+Bot_inversor, [1/3/26 2:51]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): BNB/EUR
+Type: LONG
+Entry: 523.9000
+Exit: 529.3200
+------------------
+Net PnL: +0.09 EUR
+Fees: 0.01 EUR
+Balance: 364.00 EUR
+
+Bot_inversor, [1/3/26 2:51]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): XBT/EUR
+Type: LONG
+Entry: 56924.3000
+Exit: 57204.8000
+------------------
+Net PnL: +0.10 EUR
+Fees: 0.03 EUR
+Balance: 152.58 EUR
+
+Bot_inversor, [1/3/26 2:52]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): XBT/EUR
+Type: LONG
+Entry: 56920.2000
+Exit: 57136.4000
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 421.35 EUR
+
+Bot_inversor, [1/3/26 2:52]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): XRP/EUR
+Type: LONG
+Entry: 1.1717
+Exit: 1.1911
+------------------
+Net PnL: +0.39 EUR
+Fees: 0.03 EUR
+Balance: 178.37 EUR
+
+Bot_inversor, [1/3/26 2:52]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): XRP/EUR
+Type: LONG
+Entry: 1.1711
+Exit: 1.1911
+------------------
+Net PnL: +0.16 EUR
+Fees: 0.01 EUR
+Balance: 374.17 EUR
+
+Bot_inversor, [1/3/26 2:52]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): DOT/EUR
+Type: LONG
+Entry: 1.3906
+Exit: 1.4022
+------------------
+Net PnL: +0.25 EUR
+Fees: 0.03 EUR
+Balance: 276.34 EUR
+
+Bot_inversor, [1/3/26 2:52]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): DOT/EUR
+Type: LONG
+Entry: 1.3941
+Exit: 1.4022
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.02 EUR
+Balance: 437.84 EUR
+
+Bot_inversor, [1/3/26 2:54]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): XBT/EUR
+Type: LONG
+Entry: 56889.3000
+Exit: 57262.6000
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.01 EUR
+Balance: 354.93 EUR
+
+Bot_inversor, [1/3/26 2:54]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel 2026): DOT/EUR
+Type: LONG
+Entry: 1.3893
+Exit: 1.4033
+------------------
+Net PnL: +0.11 EUR
+Fees: 0.01 EUR
+Balance: 351.63 EUR
+
+Bot_inversor, [1/3/26 2:54]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): DOGE/EUR
+Type: LONG
+Entry: 0.0797
+Exit: 0.0811
+------------------
+Net PnL: +0.42 EUR
+Fees: 0.03 EUR
+Balance: 204.19 EUR
+
+Bot_inversor, [1/3/26 2:54]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): LINK/EUR
+Type: LONG
+Entry: 7.5797
+Exit: 7.6238
+------------------
+Net PnL: +0.12 EUR
+Fees: 0.03 EUR
+Balance: 229.73 EUR
+
+Bot_inversor, [1/3/26 2:55]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel 2026): ETH/EUR
+Type: LONG
+Entry: 1667.1800
+Exit: 1701.6500
+------------------
+Net PnL: +0.11 EUR
+Fees: 0.01 EUR
+Balance: 357.55 EUR
+
+Bot_inversor, [1/3/26 2:55]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel 2026): SOL/EUR
+Type: LONG
+Entry: 72.3400
+Exit: 73.5800
+------------------
+Net PnL: +0.09 EUR
+Fees: 0.01 EUR
+Balance: 363.46 EUR
+
+Bot_inversor, [1/3/26 2:55]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel Turbo): AVAX/EUR
+Type: LONG
+Entry: 7.7481
+Exit: 7.8600
+------------------
+Net PnL: +0.24 EUR
+Fees: 0.02 EUR
+Balance: 379.23 EUR
+
+Bot_inversor, [1/3/26 2:57]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): ADA/EUR
+Type: LONG
+Entry: 0.2385
+Exit: 0.2418
+------------------
+Net PnL: +0.32 EUR
+Fees: 0.03 EUR
+Balance: 255.48 EUR
+
+Bot_inversor, [1/3/26 2:57]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): ADA/EUR
+Type: LONG
+Entry: 0.2376
+Exit: 0.2418
+------------------
+Net PnL: +0.17 EUR
+Fees: 0.01 EUR
+Balance: 384.34 EUR
+
+Bot_inversor, [1/3/26 2:57]
+[WEB] ✅ TRADE CLOSED (Hormiga): XRP/EUR
+Type: SHORT
+Entry: 1.1887
+Exit: 1.1869
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.00 EUR
+Balance: 412.27 EUR
+
+Bot_inversor, [1/3/26 3:00]
+[WEB] ✅ TRADE CLOSED (Hormiga): BNB/EUR
+Type: SHORT
+Entry: 530.7600
+Exit: 529.8000
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.00 EUR
+Balance: 422.29 EUR
+
+Bot_inversor, [1/3/26 3:00]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): DOT/EUR
+Type: SHORT
+Entry: 1.4002
+Exit: 1.3985
+------------------
+Net PnL: +0.02 EUR
+Fees: 0.01 EUR
+Balance: 170.72 EUR
+
+Bot_inversor, [1/3/26 3:00]
+[WEB] ✅ TRADE CLOSED (Hormiga): DOT/EUR
+Type: SHORT
+Entry: 1.4002
+Exit: 1.3985
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.00 EUR
+Balance: 432.30 EUR
+
+Bot_inversor, [1/3/26 3:01]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): LINK/EUR
+Type: LONG
+Entry: 7.5797
+Exit: 7.6473
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 394.42 EUR
+
+Bot_inversor, [1/3/26 3:01]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): LINK/EUR
+Type: LONG
+Entry: 7.4503
+Exit: 7.6361
+------------------
+Net PnL: +0.82 EUR
+Fees: 0.03 EUR
+Balance: 311.65 EUR
+
+Bot_inversor, [1/3/26 3:01]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): LINK/EUR
+Type: LONG
+Entry: 7.4509
+Exit: 7.6361
+------------------
+Net PnL: +0.24 EUR
+Fees: 0.01 EUR
+Balance: 448.08 EUR
+
+Bot_inversor, [1/3/26 3:01]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): XBT/EUR
+Type: LONG
+Entry: 56920.2000
+Exit: 57412.5000
+------------------
+Net PnL: +0.34 EUR
+Fees: 0.04 EUR
+Balance: 53.56 EUR
+
+Bot_inversor, [1/3/26 3:01]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): XBT/EUR
+Type: LONG
+Entry: 56920.2000
+Exit: 57412.5000
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 404.50 EUR
+
+Bot_inversor, [1/3/26 3:05]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): ADA/EUR
+Type: LONG
+Entry: 0.2385
+Exit: 0.2455
+------------------
+Net PnL: +0.97 EUR
+Fees: 0.03 EUR
+Balance: 347.11 EUR
+
+Bot_inversor, [1/3/26 3:05]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): ADA/EUR
+Type: LONG
+Entry: 0.2364
+Exit: 0.2455
+------------------
+Net PnL: +0.37 EUR
+Fees: 0.01 EUR
+Balance: 458.46 EUR
+
+Bot_inversor, [1/3/26 3:05]
+[WEB] ✅ TRADE CLOSED (Hormiga): XRP/EUR
+Type: SHORT
+Entry: 1.2069
+Exit: 1.2063
+------------------
+Net PnL: +0.00 EUR
+Fees: 0.00 EUR
+Balance: 382.29 EUR
+
+Bot_inversor, [1/3/26 3:06]
+[WEB] ❌ TRADE CLOSED (Hormiga): ADA/EUR
+Type: SHORT
+Entry: 0.2463
+Exit: 0.2467
+------------------
+Net PnL: -0.02 EUR
+Fees: 0.00 EUR
+Balance: 392.28 EUR
+
+Bot_inversor, [1/3/26 3:09]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel 2026): ADA/EUR
+Type: LONG
+Entry: 0.2382
+Exit: 0.2452
+------------------
+Net PnL: +0.17 EUR
+Fees: 0.01 EUR
+Balance: 352.00 EUR
+
+Bot_inversor, [1/3/26 3:09]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel 2026): SOL/EUR
+Type: LONG
+Entry: 73.3500
+Exit: 74.2300
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.01 EUR
+Balance: 357.88 EUR
+
+Bot_inversor, [1/3/26 3:09]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel Turbo): SOL/EUR
+Type: LONG
+Entry: 72.3400
+Exit: 74.2300
+------------------
+Net PnL: +0.22 EUR
+Fees: 0.01 EUR
+Balance: 379.44 EUR
+
+Bot_inversor, [1/3/26 3:09]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel Turbo): ETH/EUR
+Type: LONG
+Entry: 1667.0100
+Exit: 1722.8000
+------------------
+Net PnL: +0.28 EUR
+Fees: 0.01 EUR
+Balance: 379.73 EUR
+
+Bot_inversor, [1/3/26 3:09]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel 2026): DOGE/EUR
+Type: LONG
+Entry: 0.0797
+Exit: 0.0821
+------------------
+Net PnL: +0.17 EUR
+Fees: 0.01 EUR
+Balance: 358.05 EUR
+
+Bot_inversor, [1/3/26 3:09]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel Turbo): DOGE/EUR
+Type: LONG
+Entry: 0.0797
+Exit: 0.0821
+------------------
+Net PnL: +0.25 EUR
+Fees: 0.01 EUR
+Balance: 379.98 EUR
+
+Bot_inversor, [1/3/26 3:10]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel Turbo): XRP/EUR
+Type: LONG
+Entry: 1.1717
+Exit: 1.1991
+------------------
+Net PnL: +0.20 EUR
+Fees: 0.01 EUR
+Balance: 380.18 EUR
+
+Bot_inversor, [1/3/26 3:10]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel 2026): AVAX/EUR
+Type: LONG
+Entry: 7.7800
+Exit: 7.9200
+------------------
+Net PnL: +0.10 EUR
+Fees: 0.01 EUR
+Balance: 363.95 EUR
+
+Bot_inversor, [1/3/26 3:12]
+[WEB] ✅ TRADE CLOSED (Hormiga): DOGE/EUR
+Type: SHORT
+Entry: 0.0823
+Exit: 0.0823
+------------------
+Net PnL: +0.00 EUR
+Fees: 0.00 EUR
+Balance: 402.28 EUR
+
+Bot_inversor, [1/3/26 3:13]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): ETH/EUR
+Type: LONG
+Entry: 1723.2100
+Exit: 1729.5100
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 458.49 EUR
+
+Bot_inversor, [1/3/26 3:14]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): ETH/EUR
+Type: LONG
+Entry: 1723.8700
+Exit: 1732.6300
+------------------
+Net PnL: +0.04 EUR
+Fees: 0.01 EUR
+Balance: 354.97 EUR
+
+Bot_inversor, [1/3/26 3:15]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): ETH/EUR
+Type: LONG
+Entry: 1723.8700
+Exit: 1738.6400
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 394.58 EUR
+
+Bot_inversor, [1/3/26 3:26]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel 2026): LINK/EUR
+Type: LONG
+Entry: 7.5073
+Exit: 7.7358
+------------------
+Net PnL: +0.17 EUR
+Fees: 0.01 EUR
+Balance: 358.31 EUR
+
+Bot_inversor, [1/3/26 3:29]
+[WEB] ✅ TRADE CLOSED (Hormiga): BNB/EUR
+Type: SHORT
+Entry: 534.4300
+Exit: 533.5700
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.00 EUR
+Balance: 412.29 EUR
+
+Bot_inversor, [1/3/26 3:35]
+[WEB] ✅ TRADE CLOSED (Hormiga): LINK/EUR
+Type: SHORT
+Entry: 7.7500
+Exit: 7.7417
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.00 EUR
+Balance: 422.30 EUR
+
+Bot_inversor, [1/3/26 3:45]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): SOL/EUR
+Type: LONG
+Entry: 74.5200
+Exit: 75.0500
+------------------
+Net PnL: +0.16 EUR
+Fees: 0.03 EUR
+Balance: 204.51 EUR
+
+Bot_inversor, [1/3/26 3:45]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): SOL/EUR
+Type: LONG
+Entry: 74.2900
+Exit: 75.0500
+------------------
+Net PnL: +0.09 EUR
+Fees: 0.01 EUR
+Balance: 374.66 EUR
+
+Bot_inversor, [1/3/26 3:47]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): ETH/EUR
+Type: LONG
+Entry: 1718.3500
+Exit: 1733.7900
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 374.74 EUR
+
+Bot_inversor, [1/3/26 3:49]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel Turbo): LINK/EUR
+Type: LONG
+Entry: 7.5073
+Exit: 7.7194
+------------------
+Net PnL: +0.24 EUR
+Fees: 0.01 EUR
+Balance: 380.41 EUR
+
+Bot_inversor, [1/3/26 4:21]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel Turbo): ADA/EUR
+Type: LONG
+Entry: 0.2382
+Exit: 0.2447
+------------------
+Net PnL: +0.23 EUR
+Fees: 0.01 EUR
+Balance: 380.64 EUR
+
+Bot_inversor, [1/3/26 4:39]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): ADA/EUR
+Type: SHORT
+Entry: 0.2451
+Exit: 0.2440
+------------------
+Net PnL: +0.09 EUR
+Fees: 0.01 EUR
+Balance: 128.12 EUR
+
+Bot_inversor, [1/3/26 5:01]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): LINK/EUR
+Type: SHORT
+Entry: 7.7121
+Exit: 7.6868
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.01 EUR
+Balance: 149.53 EUR
+
+Bot_inversor, [1/3/26 5:25]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): BNB/EUR
+Type: SHORT
+Entry: 533.3800
+Exit: 531.7100
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.01 EUR
+Balance: 170.93 EUR
+
+Bot_inversor, [1/3/26 6:38]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): ADA/EUR
+Type: LONG
+Entry: 0.2417
+Exit: 0.2424
+------------------
+Net PnL: +0.02 EUR
+Fees: 0.01 EUR
+Balance: 433.69 EUR
+
+Bot_inversor, [1/3/26 7:30]
+[WEB] ✅ TRADE CLOSED (Hormiga): DOT/EUR
+Type: LONG
+Entry: 1.3451
+Exit: 1.3583
+------------------
+Net PnL: +0.09 EUR
+Fees: 0.01 EUR
+Balance: 412.38 EUR
+
+Bot_inversor, [1/3/26 7:47]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): LINK/EUR
+Type: LONG
+Entry: 7.5643
+Exit: 7.5758
+------------------
+Net PnL: +0.02 EUR
+Fees: 0.03 EUR
+Balance: 241.91 EUR
+
+Bot_inversor, [1/3/26 8:17]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): DOT/EUR
+Type: LONG
+Entry: 1.3560
+Exit: 1.3593
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.02 EUR
+Balance: 128.22 EUR
+
+Bot_inversor, [1/3/26 8:19]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): LINK/EUR
+Type: LONG
+Entry: 7.5758
+Exit: 7.5909
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.03 EUR
+Balance: 241.94 EUR
+
+Bot_inversor, [1/3/26 8:39]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): DOT/EUR
+Type: LONG
+Entry: 1.3669
+Exit: 1.3693
+------------------
+Net PnL: +0.02 EUR
+Fees: 0.02 EUR
+Balance: 418.50 EUR
+
+Bot_inversor, [1/3/26 8:49]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): LINK/EUR
+Type: LONG
+Entry: 7.5735
+Exit: 7.6022
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.02 EUR
+Balance: 128.28 EUR
+
+Bot_inversor, [1/3/26 8:50]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): LINK/EUR
+Type: LONG
+Entry: 7.5802
+Exit: 7.6022
+------------------
+Net PnL: +0.02 EUR
+Fees: 0.01 EUR
+Balance: 428.53 EUR
+
+Bot_inversor, [1/3/26 9:05]
+[WEB] ✅ TRADE CLOSED (Hormiga): DOT/EUR
+Type: SHORT
+Entry: 1.3696
+Exit: 1.3479
+------------------
+Net PnL: +0.15 EUR
+Fees: 0.00 EUR
+Balance: 412.54 EUR
+
+Bot_inversor, [1/3/26 9:10]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): DOT/EUR
+Type: SHORT
+Entry: 1.3613
+Exit: 1.3492
+------------------
+Net PnL: +0.18 EUR
+Fees: 0.01 EUR
+Balance: 149.83 EUR
+
+Bot_inversor, [1/3/26 9:16]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): DOT/EUR
+Type: LONG
+Entry: 1.3460
+Exit: 1.3513
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 428.56 EUR
+
+Bot_inversor, [1/3/26 9:54]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): ADA/EUR
+Type: SHORT
+Entry: 0.2401
+Exit: 0.2364
+------------------
+Net PnL: +0.32 EUR
+Fees: 0.01 EUR
+Balance: 128.75 EUR
+
+Bot_inversor, [1/3/26 10:03]
+[WEB] ✅ TRADE CLOSED (Hormiga): LINK/EUR
+Type: LONG
+Entry: 7.4919
+Exit: 7.5001
+------------------
+Net PnL: +0.00 EUR
+Fees: 0.01 EUR
+Balance: 412.54 EUR
+
+Bot_inversor, [1/3/26 10:07]
+[WEB] ✅ TRADE CLOSED (Hormiga): LINK/EUR
+Type: LONG
+Entry: 7.5001
+Exit: 7.5348
+------------------
+Net PnL: +0.04 EUR
+Fees: 0.01 EUR
+Balance: 412.58 EUR
+
+Bot_inversor, [1/3/26 10:18]
+[WEB] ✅ TRADE CLOSED (Hormiga): LINK/EUR
+Type: LONG
+Entry: 7.5348
+Exit: 7.5732
+------------------
+Net PnL: +0.04 EUR
+Fees: 0.01 EUR
+Balance: 412.62 EUR
+
+Bot_inversor, [1/3/26 12:00]
+📋 TECHNICAL SUMMARY (Last 24h)
+01/03/2026 12:00
+
+Aggressive Sniper: 10 cerradas (4 Long - 6 short) (PnLong: +0.73€ - PnShort: +0.86€) tiempo medio: 4H 36min 34seg | Saldo: 532.95€
+NetScalp DCA: 7 cerradas (7 Long - 0 short) (PnLong: +1.73€ - PnShort: +0.00€) tiempo medio: 1H 40min 53seg | Saldo: 508.73€
+Hybrid Elite: 33 cerradas (11 Long - 22 short) (PnLong: +0.77€ - PnShort: +2.90€) tiempo medio: 2H 24min 48seg | Saldo: 528.68€
+Rolling DCA: 2 cerradas (2 Long - 0 short) (PnLong: +0.70€ - PnShort: +0.00€) tiempo medio: 22H 15min 7seg | Saldo: 542.70€
+Rolling DCA v2: 17 cerradas (17 Long - 0 short) (PnLong: +1.64€ - PnShort: +0.00€) tiempo medio: 3H 34min 52seg | Saldo: 509.85€
+Hormiga: 28 cerradas (11 Long - 17 short) (PnLong: +0.28€ - PnShort: +0.52€) tiempo medio: 0H 16min 19seg | Saldo: 502.65€
+NetScalp_Rolling: 15 cerradas (15 Long - 0 short) (PnLong: +3.10€ - PnShort: +0.00€) tiempo medio: 1H 41min 48seg | Saldo: 511.84€
+Rolling DCA Inmortal: 31 cerradas (31 Long - 0 short) (PnLong: +2.38€ - PnShort: +0.00€) tiempo medio: 4H 17min 40seg | Saldo: 508.60€
+Kraken Sentinel 2026: 19 cerradas (19 Long - 0 short) (PnLong: +1.98€ - PnShort: +0.00€) tiempo medio: 15H 19min 44seg | Saldo: 512.25€
+Kraken Sentinel Turbo: 21 cerradas (21 Long - 0 short) (PnLong: +3.81€ - PnShort: +0.00€) tiempo medio: 12H 43min 25seg | Saldo: 513.68€
+Antigravity Sniper: 12 cerradas (12 Long - 0 short) (PnLong: +0.82€ - PnShort: +0.00€) tiempo medio: 8H 13min 4seg | Saldo: 502.59€
+
+Bot_inversor, [1/3/26 13:44]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): SOL/EUR
+Type: SHORT
+Entry: 72.2800
+Exit: 72.2100
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.01 EUR
+Balance: 107.25 EUR
+
+Bot_inversor, [1/3/26 13:44]
+[WEB] ✅ TRADE CLOSED (Hormiga): SOL/EUR
+Type: SHORT
+Entry: 72.6400
+Exit: 72.2100
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.00 EUR
+Balance: 422.67 EUR
+
+Bot_inversor, [1/3/26 13:44]
+[WEB] ✅ TRADE CLOSED (Hormiga): XBT/EUR
+Type: SHORT
+Entry: 57761.8000
+Exit: 56337.0000
+------------------
+Net PnL: +0.24 EUR
+Fees: 0.00 EUR
+Balance: 432.92 EUR
+
+Bot_inversor, [1/3/26 13:44]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel 2026): BNB/EUR
+Type: LONG
+Entry: 523.9000
+Exit: 526.6600
+------------------
+Net PnL: +0.02 EUR
+Fees: 0.01 EUR
+Balance: 302.80 EUR
+
+Bot_inversor, [1/3/26 13:44]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel Turbo): BNB/EUR
+Type: LONG
+Entry: 524.2000
+Exit: 526.6600
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 352.34 EUR
+
+Bot_inversor, [1/3/26 14:52]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): AVAX/EUR
+Type: LONG
+Entry: 7.7000
+Exit: 7.7400
+------------------
+Net PnL: +0.04 EUR
+Fees: 0.01 EUR
+Balance: 392.58 EUR
+
+Bot_inversor, [1/3/26 14:52]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): AVAX/EUR
+Type: LONG
+Entry: 7.6900
+Exit: 7.7300
+------------------
+Net PnL: +0.04 EUR
+Fees: 0.01 EUR
+Balance: 308.59 EUR
+
+Bot_inversor, [1/3/26 14:53]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): AVAX/EUR
+Type: LONG
+Entry: 7.7400
+Exit: 7.7900
+------------------
+Net PnL: +0.05 EUR
+Fees: 0.01 EUR
+Balance: 392.63 EUR
+
+Bot_inversor, [1/3/26 14:53]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): BNB/EUR
+Type: LONG
+Entry: 529.8100
+Exit: 530.7700
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.03 EUR
+Balance: 240.58 EUR
+
+Bot_inversor, [1/3/26 14:53]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): BNB/EUR
+Type: LONG
+Entry: 529.8300
+Exit: 530.7700
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.01 EUR
+Balance: 392.64 EUR
+
+Bot_inversor, [1/3/26 14:54]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): LINK/EUR
+Type: LONG
+Entry: 7.5787
+Exit: 7.6075
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.02 EUR
+Balance: 128.71 EUR
+
+Bot_inversor, [1/3/26 14:54]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): LINK/EUR
+Type: LONG
+Entry: 7.5787
+Exit: 7.6075
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 402.67 EUR
+
+Bot_inversor, [1/3/26 14:55]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): BNB/EUR
+Type: LONG
+Entry: 528.4900
+Exit: 531.0200
+------------------
+Net PnL: +0.04 EUR
+Fees: 0.01 EUR
+Balance: 318.63 EUR
+
+Bot_inversor, [1/3/26 14:55]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): ADA/EUR
+Type: LONG
+Entry: 0.2368
+Exit: 0.2377
+------------------
+Net PnL: +0.05 EUR
+Fees: 0.02 EUR
+Balance: 150.19 EUR
+
+Bot_inversor, [1/3/26 14:55]
+[WEB] ❌ TRADE CLOSED (NetScalp_Rolling): AVAX/EUR
+Type: LONG
+Entry: 7.7600
+Exit: 7.7600
+------------------
+Net PnL: -0.03 EUR
+Fees: 0.03 EUR
+Balance: 240.55 EUR
+
+Bot_inversor, [1/3/26 14:57]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): BNB/EUR
+Type: LONG
+Entry: 528.4900
+Exit: 530.9900
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.02 EUR
+Balance: 171.64 EUR
+
+Bot_inversor, [1/3/26 15:08]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): ADA/EUR
+Type: LONG
+Entry: 0.2378
+Exit: 0.2398
+------------------
+Net PnL: +0.16 EUR
+Fees: 0.02 EUR
+Balance: 414.04 EUR
+
+Bot_inversor, [1/3/26 15:08]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): LINK/EUR
+Type: LONG
+Entry: 7.5874
+Exit: 7.6602
+------------------
+Net PnL: +0.10 EUR
+Fees: 0.01 EUR
+Balance: 330.34 EUR
+
+Bot_inversor, [1/3/26 15:09]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): LINK/EUR
+Type: LONG
+Entry: 7.6141
+Exit: 7.6433
+------------------
+Net PnL: +0.10 EUR
+Fees: 0.03 EUR
+Balance: 240.64 EUR
+
+Bot_inversor, [1/3/26 15:09]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): LINK/EUR
+Type: LONG
+Entry: 7.6075
+Exit: 7.6433
+------------------
+Net PnL: +0.04 EUR
+Fees: 0.01 EUR
+Balance: 424.08 EUR
+
+Bot_inversor, [1/3/26 15:09]
+[WEB] ✅ TRADE CLOSED (Kraken Sentinel Turbo): LINK/EUR
+Type: LONG
+Entry: 7.5808
+Exit: 7.6433
+------------------
+Net PnL: +0.20 EUR
+Fees: 0.03 EUR
+Balance: 346.78 EUR
+
+Bot_inversor, [1/3/26 16:04]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): LINK/EUR
+Type: SHORT
+Entry: 7.6039
+Exit: 7.5893
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 128.78 EUR
+
+Bot_inversor, [1/3/26 16:09]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): ADA/EUR
+Type: SHORT
+Entry: 0.2378
+Exit: 0.2369
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 150.30 EUR
+
+Bot_inversor, [1/3/26 17:32]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): BNB/EUR
+Type: LONG
+Entry: 530.8300
+Exit: 532.6000
+------------------
+Net PnL: +0.02 EUR
+Fees: 0.01 EUR
+Balance: 422.51 EUR
+
+Bot_inversor, [1/3/26 17:50]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): ADA/EUR
+Type: SHORT
+Entry: 0.2361
+Exit: 0.2349
+------------------
+Net PnL: +0.10 EUR
+Fees: 0.01 EUR
+Balance: 150.40 EUR
+
+Bot_inversor, [1/3/26 17:50]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): BNB/EUR
+Type: SHORT
+Entry: 530.9900
+Exit: 527.6700
+------------------
+Net PnL: +0.13 EUR
+Fees: 0.01 EUR
+Balance: 171.97 EUR
+
+Bot_inversor, [1/3/26 18:15]
+[WEB] ❌ TRADE CLOSED (Rolling DCA Inmortal): SOL/EUR
+Type: LONG
+Entry: 74.2900
+Exit: 71.1500
+------------------
+Net PnL: -0.43 EUR
+Fees: 0.01 EUR
+Balance: 395.66 EUR
+
+Bot_inversor, [1/3/26 18:15]
+[WEB] ❌ TRADE CLOSED (Kraken Sentinel 2026): XRP/EUR
+Type: LONG
+Entry: 1.1740
+Exit: 1.1591
+------------------
+Net PnL: -0.15 EUR
+Fees: 0.01 EUR
+Balance: 269.52 EUR
+
+Bot_inversor, [1/3/26 18:15]
+[WEB] ✅ TRADE CLOSED (Hormiga): ETH/EUR
+Type: SHORT
+Entry: 1679.9200
+Exit: 1670.6600
+------------------
+Net PnL: +0.05 EUR
+Fees: 0.00 EUR
+Balance: 442.97 EUR
+
+Bot_inversor, [1/3/26 18:22]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): ETH/EUR
+Type: SHORT
+Entry: 1668.0600
+Exit: 1659.4400
+------------------
+Net PnL: +0.10 EUR
+Fees: 0.01 EUR
+Balance: 171.94 EUR
+
+Bot_inversor, [1/3/26 18:28]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): ETH/EUR
+Type: LONG
+Entry: 1658.2000
+Exit: 1664.8400
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 335.66 EUR
+
+Bot_inversor, [1/3/26 18:29]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): DOGE/EUR
+Type: LONG
+Entry: 0.0779
+Exit: 0.0782
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 345.69 EUR
+
+Bot_inversor, [1/3/26 18:29]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): XRP/EUR
+Type: LONG
+Entry: 1.1524
+Exit: 1.1554
+------------------
+Net PnL: +0.02 EUR
+Fees: 0.01 EUR
+Balance: 355.72 EUR
+
+Bot_inversor, [1/3/26 18:41]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): SOL/EUR
+Type: LONG
+Entry: 70.9600
+Exit: 71.1400
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.05 EUR
+Balance: 400.03 EUR
+
+Bot_inversor, [1/3/26 18:41]
+[WEB] ✅ TRADE CLOSED (Saint-Grial PRO X3): SOL/EUR
+Type: LONG
+Entry: 70.8500
+Exit: 71.1400
+------------------
+Net PnL: +1.39 EUR
+Fees: 0.45 EUR
+Balance: 501.39 EUR
+
+Bot_inversor, [1/3/26 18:45]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): ETH/EUR
+Type: LONG
+Entry: 1664.7200
+Exit: 1667.3300
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.05 EUR
+Balance: 349.97 EUR
+
+Bot_inversor, [1/3/26 18:46]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): XRP/EUR
+Type: LONG
+Entry: 1.1554
+Exit: 1.1579
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.05 EUR
+Balance: 350.03 EUR
+
+Bot_inversor, [1/3/26 18:46]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): SOL/EUR
+Type: LONG
+Entry: 70.9600
+Exit: 71.0600
+------------------
+Net PnL: +0.02 EUR
+Fees: 0.05 EUR
+Balance: 400.07 EUR
+
+Bot_inversor, [1/3/26 18:46]
+[WEB] ❌ TRADE CLOSED (NetScalp_Rolling): ADA/EUR
+Type: LONG
+Entry: 0.2330
+Exit: 0.2330
+------------------
+Net PnL: -0.04 EUR
+Fees: 0.05 EUR
+Balance: 450.01 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): SOL/EUR
+Type: LONG
+Entry: 71.0600
+Exit: 71.1800
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.05 EUR
+Balance: 300.05 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): ADA/EUR
+Type: LONG
+Entry: 0.2330
+Exit: 0.2336
+------------------
+Net PnL: +0.07 EUR
+Fees: 0.05 EUR
+Balance: 300.11 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): SOL/EUR
+Type: LONG
+Entry: 71.1800
+Exit: 71.3200
+------------------
+Net PnL: +0.05 EUR
+Fees: 0.05 EUR
+Balance: 350.19 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): XRP/EUR
+Type: LONG
+Entry: 1.1563
+Exit: 1.1611
+------------------
+Net PnL: +0.14 EUR
+Fees: 0.04 EUR
+Balance: 99.94 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): SOL/EUR
+Type: LONG
+Entry: 70.8500
+Exit: 71.3200
+------------------
+Net PnL: +0.25 EUR
+Fees: 0.04 EUR
+Balance: 144.66 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): ETH/EUR
+Type: LONG
+Entry: 1664.2900
+Exit: 1670.6600
+------------------
+Net PnL: +0.13 EUR
+Fees: 0.04 EUR
+Balance: 189.25 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): LINK/EUR
+Type: LONG
+Entry: 7.4374
+Exit: 7.4680
+------------------
+Net PnL: +0.14 EUR
+Fees: 0.04 EUR
+Balance: 233.85 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): ADA/EUR
+Type: LONG
+Entry: 0.2333
+Exit: 0.2336
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.04 EUR
+Balance: 278.33 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): DOGE/EUR
+Type: LONG
+Entry: 0.0781
+Exit: 0.0784
+------------------
+Net PnL: +0.10 EUR
+Fees: 0.04 EUR
+Balance: 322.90 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): BNB/EUR
+Type: LONG
+Entry: 524.6800
+Exit: 525.8700
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.04 EUR
+Balance: 367.43 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): DOT/EUR
+Type: LONG
+Entry: 1.2986
+Exit: 1.3002
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.04 EUR
+Balance: 411.90 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): AVAX/EUR
+Type: LONG
+Entry: 7.6400
+Exit: 7.6500
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.04 EUR
+Balance: 456.38 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): XRP/EUR
+Type: LONG
+Entry: 1.1563
+Exit: 1.1611
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 409.99 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): SOL/EUR
+Type: LONG
+Entry: 70.8500
+Exit: 71.3200
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.01 EUR
+Balance: 420.05 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): ETH/EUR
+Type: LONG
+Entry: 1664.2900
+Exit: 1670.6600
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 430.08 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): LINK/EUR
+Type: LONG
+Entry: 7.4374
+Exit: 7.4680
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.01 EUR
+Balance: 440.12 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): ADA/EUR
+Type: LONG
+Entry: 0.2333
+Exit: 0.2336
+------------------
+Net PnL: +0.00 EUR
+Fees: 0.01 EUR
+Balance: 450.12 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): DOGE/EUR
+Type: LONG
+Entry: 0.0781
+Exit: 0.0784
+------------------
+Net PnL: +0.02 EUR
+Fees: 0.01 EUR
+Balance: 460.15 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): BNB/EUR
+Type: LONG
+Entry: 524.6800
+Exit: 525.8700
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.01 EUR
+Balance: 470.17 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): DOT/EUR
+Type: LONG
+Entry: 1.2986
+Exit: 1.3002
+------------------
+Net PnL: +0.00 EUR
+Fees: 0.01 EUR
+Balance: 480.18 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): AVAX/EUR
+Type: LONG
+Entry: 7.6400
+Exit: 7.6500
+------------------
+Net PnL: +0.00 EUR
+Fees: 0.01 EUR
+Balance: 490.19 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): LINK/EUR
+Type: LONG
+Entry: 7.4575
+Exit: 7.4680
+------------------
+Net PnL: +0.00 EUR
+Fees: 0.01 EUR
+Balance: 365.72 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Rolling DCA Inmortal): SOL/EUR
+Type: LONG
+Entry: 71.1500
+Exit: 71.3200
+------------------
+Net PnL: +0.01 EUR
+Fees: 0.01 EUR
+Balance: 375.74 EUR
+
+Bot_inversor, [1/3/26 18:49]
+[WEB] ✅ TRADE CLOSED (Antigravity Sniper): SOL/EUR
+Type: LONG
+Entry: 70.9700
+Exit: 71.3200
+------------------
+Net PnL: +0.05 EUR
+Fees: 0.01 EUR
+Balance: 500.05 EUR
+
+Bot_inversor, [1/3/26 18:57]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): ETH/EUR
+Type: SHORT
+Entry: 1671.0500
+Exit: 1668.5200
+------------------
+Net PnL: +0.06 EUR
+Fees: 0.02 EUR
+Balance: 450.05 EUR
+
+Bot_inversor, [1/3/26 19:04]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): XBT/EUR
+Type: LONG
+Entry: 55932.4000
+Exit: 56032.4000
+------------------
+Net PnL: +0.04 EUR
+Fees: 0.05 EUR
+Balance: 300.17 EUR
+
+Bot_inversor, [1/3/26 19:04]
+[WEB] ✅ TRADE CLOSED (NetScalp_Rolling): XBT/EUR
+Type: LONG
+Entry: 55932.4000
+Exit: 56032.4000
+------------------
+Net PnL: +0.04 EUR
+Fees: 0.05 EUR
+Balance: 450.05 EUR
+
+Bot_inversor, [1/3/26 19:04]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): XBT/EUR
+Type: LONG
+Entry: 56032.4000
+Exit: 56172.5000
+------------------
+Net PnL: +0.07 EUR
+Fees: 0.05 EUR
+Balance: 300.24 EUR
+
+Bot_inversor, [1/3/26 19:04]
+[WEB] ✅ TRADE CLOSED (NetScalp DCA): SOL/EUR
+Type: LONG
+Entry: 71.2800
+Exit: 71.3900
+------------------
+Net PnL: +0.03 EUR
+Fees: 0.05 EUR
+Balance: 350.31 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): ETH/EUR
+Type: LONG
+Entry: 1664.9000
+Exit: 1670.7700
+------------------
+Net PnL: +0.13 EUR
+Fees: 0.05 EUR
+Balance: 400.16 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (Hybrid Elite): SOL/EUR
+Type: SHORT
+Entry: 71.4700
+Exit: 71.4100
+------------------
+Net PnL: +0.02 EUR
+Fees: 0.02 EUR
+Balance: 450.19 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): ETH/EUR
+Type: LONG
+Entry: 1664.9000
+Exit: 1679.4000
+------------------
+Net PnL: +0.34 EUR
+Fees: 0.04 EUR
+Balance: 100.99 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): ETH/EUR
+Type: LONG
+Entry: 1664.9000
+Exit: 1679.4000
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 410.22 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (RollingDCA_legacy): ADA/EUR
+Type: LONG
+Entry: 0.2333
+Exit: 0.2355
+------------------
+Net PnL: +0.09 EUR
+Fees: 0.01 EUR
+Balance: 430.05 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (RollingDCA_v2_legacy): ADA/EUR
+Type: LONG
+Entry: 0.2333
+Exit: 0.2355
+------------------
+Net PnL: +0.09 EUR
+Fees: 0.01 EUR
+Balance: 430.05 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (RollingDCA_legacy): LINK/EUR
+Type: LONG
+Entry: 7.4479
+Exit: 7.5172
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 440.14 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (RollingDCA_v2_legacy): LINK/EUR
+Type: LONG
+Entry: 7.4479
+Exit: 7.5172
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 440.14 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): ADA/EUR
+Type: LONG
+Entry: 0.2336
+Exit: 0.2358
+------------------
+Net PnL: +0.37 EUR
+Fees: 0.04 EUR
+Balance: 145.83 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): ADA/EUR
+Type: LONG
+Entry: 0.2336
+Exit: 0.2358
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 420.31 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): LINK/EUR
+Type: LONG
+Entry: 7.4548
+Exit: 7.5249
+------------------
+Net PnL: +0.37 EUR
+Fees: 0.04 EUR
+Balance: 190.67 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): LINK/EUR
+Type: LONG
+Entry: 7.4548
+Exit: 7.5249
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 430.40 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): DOT/EUR
+Type: LONG
+Entry: 1.2987
+Exit: 1.3099
+------------------
+Net PnL: +0.34 EUR
+Fees: 0.04 EUR
+Balance: 235.48 EUR
+
+Bot_inversor, [1/3/26 19:05]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): DOT/EUR
+Type: LONG
+Entry: 1.2987
+Exit: 1.3099
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 440.48 EUR
+
+Bot_inversor, [1/3/26 19:07]
+[WEB] ✅ TRADE CLOSED (RollingDCA_legacy): DOGE/EUR
+Type: LONG
+Entry: 0.0782
+Exit: 0.0789
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 450.22 EUR
+
+Bot_inversor, [1/3/26 19:07]
+[WEB] ✅ TRADE CLOSED (RollingDCA_v2_legacy): DOGE/EUR
+Type: LONG
+Entry: 0.0782
+Exit: 0.0789
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 450.22 EUR
+
+Bot_inversor, [1/3/26 19:07]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): SOL/EUR
+Type: LONG
+Entry: 71.2800
+Exit: 71.9000
+------------------
+Net PnL: +0.34 EUR
+Fees: 0.04 EUR
+Balance: 280.28 EUR
+
+Bot_inversor, [1/3/26 19:07]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): SOL/EUR
+Type: LONG
+Entry: 71.2800
+Exit: 71.9000
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 450.56 EUR
+
+Bot_inversor, [1/3/26 19:08]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): DOGE/EUR
+Type: LONG
+Entry: 0.0784
+Exit: 0.0791
+------------------
+Net PnL: +0.34 EUR
+Fees: 0.04 EUR
+Balance: 325.09 EUR
+
+Bot_inversor, [1/3/26 19:08]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): DOGE/EUR
+Type: LONG
+Entry: 0.0784
+Exit: 0.0791
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 460.64 EUR
+
+Bot_inversor, [1/3/26 19:08]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): XBT/EUR
+Type: LONG
+Entry: 55914.1000
+Exit: 56391.4000
+------------------
+Net PnL: +0.33 EUR
+Fees: 0.04 EUR
+Balance: 369.89 EUR
+
+Bot_inversor, [1/3/26 19:08]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): XBT/EUR
+Type: LONG
+Entry: 55914.1000
+Exit: 56391.4000
+------------------
+Net PnL: +0.08 EUR
+Fees: 0.01 EUR
+Balance: 470.73 EUR
+
+Bot_inversor, [1/3/26 19:08]
+[WEB] ✅ TRADE CLOSED (Rolling DCA): AVAX/EUR
+Type: LONG
+Entry: 7.6400
+Exit: 7.7200
+------------------
+Net PnL: +0.42 EUR
+Fees: 0.04 EUR
+Balance: 414.78 EUR
+
+Bot_inversor, [1/3/26 19:08]
+[WEB] ✅ TRADE CLOSED (Rolling DCA v2): AVAX/EUR
+Type: LONG
+Entry: 7.6400
+Exit: 7.7200
+------------------
+Net PnL: +0.09 EUR
+Fees: 0.01 EUR
+Balance: 480.82 EUR
+
+Bot_inversor, [1/3/26 19:08]
+[WEB] ✅ TRADE CLOSED (RollingDCA_legacy): AVAX/EUR
+Type: LONG
+Entry: 7.6400
+Exit: 7.7200
+------------------
+Net PnL: +0.09 EUR
+Fees: 0.01 EUR
+Balance: 460.32 EUR
+
+Bot_inversor, [1/3/26 19:08]
+[WEB] ✅ TRADE CLOSED (RollingDCA_v2_legacy): AVAX/EUR
+Type: LONG
+Entry: 7.6400
+Exit: 7.7200
+------------------
+Net PnL: +0.09 EUR
+Fees: 0.01 EUR
+Balance: 460.32 EUR
+
